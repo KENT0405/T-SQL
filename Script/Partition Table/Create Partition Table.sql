@@ -1,0 +1,34 @@
+CREATE PARTITION FUNCTION [Pfn_datetime](DATETIME) AS RANGE RIGHT FOR VALUES (N'2022-09-01',N'2022-10-01',N'2022-11-01')
+GO
+
+CREATE PARTITION SCHEME [Psh_datetime] AS PARTITION [Pfn_datetime] TO ([PRIMARY],[202209],[202210],[202211])
+GO
+
+
+CREATE TABLE [dbo].[Partition_log]
+(
+	SN BIGINT IDENTITY(1,1) NOT NULL,
+	tran_date DATETIME NOT NULL
+)
+GO
+
+ALTER TABLE [dbo].[Partition_log] ADD CONSTRAINT [PK_Partition_log] PRIMARY KEY CLUSTERED 
+(
+	SN ASC,
+	tran_date
+) ON [Psh_datetime](tran_date)
+GO
+
+CREATE NONCLUSTERED INDEX [idx_tran_date] ON [dbo].[Partition_log]
+(
+	[tran_date] ASC
+) ON [Psh_datetime]([tran_date])
+GO
+
+INSERT INTO Partition_log VALUES ('2022-09-01 00:00:00.000'),('2022-09-05 00:00:00.000'),('2022-09-06 00:00:00.000')
+INSERT INTO Partition_log VALUES ('2022-10-01 00:00:00.000'),('2022-10-12 00:00:00.000')
+INSERT INTO Partition_log VALUES ('2022-11-01 00:00:00.000'),('2022-11-11 00:00:00.000'),('2022-11-30 00:00:00.000'),('2022-11-07 00:00:00.000')
+GO
+
+--RIGHT >= ? AND < ?
+--LEFT > ? AND <= ?
