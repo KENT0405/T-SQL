@@ -25,3 +25,4 @@ ORDER BY n.value('(@timestamp)[1]', 'DATETIME2') ASC
 select cast(event_data as XML) as event_data
 from sys.fn_xe_file_target_read_file('D:\Events\T-SQL Trace_0_133195357183830000.xel', null, null, null)
 */
+
