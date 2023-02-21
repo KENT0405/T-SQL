@@ -1,5 +1,8 @@
---重新設定"伺服器"定序 (打開SQL安裝的setup)
---將 cmd 切換到 setup的檔案位址:
+--重新設定"伺服器"定序 :
+
+-->先將instance上的DB全部卸載
+-->打開SQL安裝的setup
+-->將 cmd 切換到 setup的檔案位址:
 /Setup.exe /QUIET /ACTION=REBUILDDATABASE /INSTANCENAME=MSSQLSERVER /SQLSYSADMINACCOUNTS=.\Administrator /SAPWD=1qaz@WSX3edc /SQLCOLLATION=Chinese_PRC_CI_AS
 
 ---------------------------------------------------------------------------------------
@@ -12,7 +15,7 @@ ALTER DATABASE [db_name] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
 GO
 
 -- 變更資料庫定序
-ALTER DATABASE [db_name] COLLATE Chinese_PRC_CS_AI
+ALTER DATABASE [db_name] COLLATE Chinese_PRC_CI_AS
 GO
 
 -- 恢復成為多人使用
@@ -24,8 +27,8 @@ GO
 USE [db_name]
 GO
 
-ALTER TABLE [table_name] ALTER COLUMN F1 varchar(10) COLLATE Chinese_Taiwan_Stroke_CS_AS;  
+ALTER TABLE [table_name] ALTER COLUMN F1 varchar(10) COLLATE Chinese_PRC_CI_AS;  
 GO  
 
-ALTER TABLE [table_name] ALTER COLUMN F2 char(10) COLLATE Chinese_Taiwan_Stroke_CS_AS;  
+ALTER TABLE [table_name] ALTER COLUMN F2 char(10) COLLATE Chinese_PRC_CI_AS;  
 GO  

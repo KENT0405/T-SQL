@@ -28,7 +28,7 @@ WHERE   sys.stats.auto_created = 0
 		AND OBJECTPROPERTY(sys.stats.object_id, 'IsMsShipped') = 0;
 
 /*　查看單一Table的統計值
-DECLARE @TableName = ''
+DECLARE @TableName VARCHAR(30) = ''
 SELECT
 	s.name AS 'Statistics'
 	,so.name AS TableName
