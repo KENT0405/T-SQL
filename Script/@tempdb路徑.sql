@@ -21,7 +21,7 @@ GO
 ALTER DATABASE tempdb MODIFY FILE (NAME = templog, FILENAME = 'D:\DB\sys_db\tempdb.ldf')
 GO
 ----------------------------------STEP 2 --------------------------------------------------------
---重開 SQL Server
+--關掉SQLserver，然後把D、C槽裡的tempdb檔案刪除
 
 ----------------------------------STEP 3 --------------------------------------------------------
---刪除原本 Tempdb 的儲存位址裡的資料
+--開啟SQLserver

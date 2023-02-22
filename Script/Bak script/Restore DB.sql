@@ -25,7 +25,8 @@ BEGIN
 	WITH FILE = 1, ' 
 	+ CASE WHEN @BakFile_diff <> '' THEN 'NORECOVERY,' 
 		   WHEN @BakFile_log1 <> '' THEN 'NORECOVERY,' ELSE '' END + ' NOUNLOAD,' 
-	+ CASE WHEN @replace = 'Y' THEN 'REPLACE,' ELSE '' END + ' STATS = 5'
+	+ CASE WHEN @replace = 'Y' THEN 'REPLACE,' ELSE '' END + ' STATS = 5
+	--,MAXTRANSFERSIZE = 4194304 , BUFFERCOUNT = 48'
 END
 
 --Diff_backup

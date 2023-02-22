@@ -3,7 +3,7 @@
 -------------------------------------------------------------
 
 DECLARE 
-	 @bak_path		VARCHAR(100) = 'D:\BAK'
+	 @bak_path		VARCHAR(100) = 'D:\BAK\log'
 	,@compression	VARCHAR(1) = 'Y' --要不要壓縮( Y / N )
 	,@SQL			NVARCHAR(MAX)
 
@@ -16,10 +16,11 @@ BEGIN
 	NAME = N''' + DB_NAME() + '-log_backup'', 
 	SKIP, NOREWIND, NOUNLOAD, ' +
 	CASE WHEN @compression = 'Y' THEN 'COMPRESSION,' ELSE '' END +  
-	' STATS = 10'
+	' STATS = 10
+	,MAXTRANSFERSIZE = 4194304 , BUFFERCOUNT = 48'
 END
 		
 PRINT @SQL
 
-EXEC sp_executesql @SQL
+--EXEC sp_executesql @SQL
 GO
