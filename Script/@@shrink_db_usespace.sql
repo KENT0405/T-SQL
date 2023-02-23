@@ -30,6 +30,10 @@ SELECT
 	END
 	'
 FROM shink
+WHERE 1 = 1
+--AND [Space_Used(MB)] = 0
+--AND [Currently_Space(MB)] <> 8
+--AND NAME NOT LIKE '%base'
 ORDER BY 1
 
 
