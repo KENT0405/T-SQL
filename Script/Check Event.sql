@@ -1,7 +1,7 @@
 SELECT
     --n.value('(@name)[1]', 'VARCHAR(50)') AS event_name,
     --n.value('(@package)[1]', 'VARCHAR(50)') AS package_name,
-    n.value('(@timestamp)[1]', 'DATETIME2') AS [utc_timestamp],
+    DATEADD(HOUR,8,n.value('(@timestamp)[1]', 'DATETIME2')) AS [timestamp],
     n.value('(data[@name="duration"]/value)[1]', 'INT') AS duration,
     --n.value('(data[@name="cpu_time"]/value)[1]', 'INT') AS cpu,
     --n.value('(data[@name="physical_reads"]/value)[1]', 'INT') AS physical_reads,
