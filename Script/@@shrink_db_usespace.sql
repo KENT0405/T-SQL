@@ -31,9 +31,10 @@ SELECT
 	'
 FROM shink
 WHERE 1 = 1
---AND [Space_Used(MB)] = 0
+--AND [Space_Used(MB)] < 10
 --AND [Currently_Space(MB)] <> 8
 --AND NAME NOT LIKE '%base'
+--AND NAME NOT LIKE '%today'
 ORDER BY 1
 
 
