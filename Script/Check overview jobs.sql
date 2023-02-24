@@ -9,7 +9,7 @@ SELECT
 			THEN 'every ' + CAST (freq_interval AS VARCHAR(3)) + ' day(s)' + '_every ' + CAST(freq_subday_interval AS VARCHAR(7)) + ' min'
 		WHEN freq_subday_type = 8 
 			THEN 'every ' + CAST (freq_interval AS VARCHAR(3)) + ' day(s)' + '_every ' + CAST(freq_subday_interval AS VARCHAR(7)) + ' hours'
-			ELSE 'every ' + CAST (freq_interval AS VARCHAR(3)) + ' day(s)' 
+		ELSE     'every ' + CAST (freq_interval AS VARCHAR(3)) + ' day(s)' 
 	END AS frequency,
 	CASE
 		WHEN freq_subday_type = 2 
@@ -49,7 +49,7 @@ SELECT
 			THEN ' every ' + CAST(freq_subday_interval AS VARCHAR(7)) + ' min'
 		WHEN freq_subday_type = 8 
 			THEN ' every ' + CAST(freq_subday_interval AS VARCHAR(7)) + ' hours'
-			ELSE '' 
+		ELSE '' 
 	END AS [Days],
 	CASE
 		WHEN freq_subday_type = 2 
