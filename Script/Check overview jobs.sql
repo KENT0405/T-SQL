@@ -1,22 +1,10 @@
 -- Run only one times
 SELECT
 	sysjobs.[name] AS job_name,
-	CASE
-		WHEN sysjobactivity.start_execution_date IS NULL THEN 'Not running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NULL THEN 'Running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NOT NULL THEN 'Not running'
-	END AS 'RunStatus',
 	CASE WHEN sysjobs.[enabled] = 1 THEN 'Enabled' ELSE 'Disabled' END AS [enabled],
 	'Run only one times' AS frequency,
-	CASE
-		WHEN freq_subday_type = 2 
-			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
-		WHEN freq_subday_type = 4 
-			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
-		WHEN freq_subday_type = 8 
-			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
-		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
-	END AS starting_time,
+	'NULL' AS starting_time,
+	'NULL' AS ending_time,
 	sysjobactivity.last_executed_step_date AS last_run_date,
 	CASE
 		WHEN sysjobservers.last_run_outcome = 0 THEN 'fail' 
@@ -27,6 +15,7 @@ SELECT
 		ELSE 'unknown' END AS result,
 	sysjobservers.last_run_duration AS duration,
 	sysjobactivity.next_scheduled_run_date AS next_run_date,
+	CAST(active_end_date AS VARCHAR(10)) + ',' + CAST(active_end_time AS VARCHAR(10)) AS end_run_date,
 	sysjobs.date_modified
 FROM msdb.dbo.sysjobs
 INNER JOIN msdb.dbo.sysjobschedules	 ON sysjobs.job_id = sysjobschedules.job_id
@@ -36,15 +25,11 @@ INNER JOIN msdb.dbo.sysjobservers 	 ON sysjobservers.job_id = sysjobs.job_id
 WHERE freq_type = 1
 AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.sysjobactivity)
 
-UNION
+UNION ALL
+
 -- jobs with a daily schedule
 SELECT
 	sysjobs.[name] AS job_name,
-	CASE
-		WHEN sysjobactivity.start_execution_date IS NULL THEN 'Not running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NULL THEN 'Running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NOT NULL THEN 'Not running'
-	END AS 'RunStatus',
 	CASE WHEN sysjobs.[enabled] = 1 THEN 'Enabled' ELSE 'Disabled' END AS [enabled],
 	CASE
 		WHEN freq_subday_type = 2 
@@ -64,6 +49,15 @@ SELECT
 			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 	END AS starting_time,
+	CASE
+		WHEN freq_subday_type = 2 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 4 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 8 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+	END AS ending_time,
 	sysjobactivity.last_executed_step_date AS last_run_date,
 	CASE
 		WHEN sysjobservers.last_run_outcome = 0 THEN 'fail' 
@@ -74,6 +68,7 @@ SELECT
 		ELSE 'unknown' END AS result,
 	sysjobservers.last_run_duration AS duration,
 	sysjobactivity.next_scheduled_run_date AS next_run_date,
+	CAST(active_end_date AS VARCHAR(10)) + ',' + CAST(active_end_time AS VARCHAR(10)) AS end_run_date,
 	sysjobs.date_modified
 FROM msdb.dbo.sysjobs
 INNER JOIN msdb.dbo.sysjobschedules	 ON sysjobs.job_id = sysjobschedules.job_id
@@ -83,16 +78,11 @@ INNER JOIN msdb.dbo.sysjobservers 	 ON sysjobservers.job_id = sysjobs.job_id
 WHERE freq_type = 4
 AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.sysjobactivity)
 
-UNION
+UNION ALL
 
 -- jobs with a weekly schedule
 SELECT
 	sysjobs.[name] AS job_name,
-	CASE
-		WHEN sysjobactivity.start_execution_date IS NULL THEN 'Not running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NULL THEN 'Running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NOT NULL THEN 'Not running'
-	END AS 'RunStatus',
 	CASE WHEN sysjobs.[enabled] = 1 THEN 'Enabled' ELSE 'Disabled' END AS [enabled],
 	CASE WHEN freq_type = 8 THEN 'every ' + CAST(freq_recurrence_factor AS VARCHAR(7))  + ' week(s) on ' END +
 	LEFT
@@ -131,6 +121,15 @@ SELECT
 			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 	END AS starting_time,
+	CASE
+		WHEN freq_subday_type = 2 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 4 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 8 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+	END AS ending_time,
 	sysjobactivity.last_executed_step_date AS last_run_date,
 	CASE
 		WHEN sysjobservers.last_run_outcome = 0 THEN 'fail' 
@@ -141,6 +140,8 @@ SELECT
 		ELSE 'unknown' END AS result,
 	sysjobservers.last_run_duration AS duration,
 	sysjobactivity.next_scheduled_run_date AS next_run_date,
+	CASE WHEN active_end_date >= 90000000 THEN 'no end date' 
+	ELSE active_end_date + ' ' + active_end_time END AS end_run_date,
 	sysjobs.date_modified
 FROM msdb.dbo.sysjobs
 INNER JOIN msdb.dbo.sysjobschedules	 ON sysjobs.job_id = sysjobschedules.job_id
@@ -150,18 +151,22 @@ INNER JOIN msdb.dbo.sysjobservers 	 ON sysjobservers.job_id = sysjobs.job_id
 WHERE freq_type = 8
 AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.sysjobactivity)
 
-UNION
+UNION ALL
 
 -- jobs with a monthly schedule(freq_type = 16)
 SELECT
 	sysjobs.[name] AS job_name,
-	CASE
-		WHEN sysjobactivity.start_execution_date IS NULL THEN 'Not running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NULL THEN 'Running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NOT NULL THEN 'Not running'
-	END AS 'RunStatus',
 	CASE WHEN sysjobs.[enabled] = 1 THEN 'Enabled' ELSE 'Disabled' END AS [enabled],
-	'every month on ' + CAST(freq_interval AS VARCHAR(3)) AS frequency,
+	'every ' + CAST(freq_recurrence_factor AS VARCHAR(7)) + ' month(s) on ' + CAST(freq_interval AS VARCHAR(3)) +
+	CASE
+		WHEN freq_subday_type = 2 
+			THEN ' every ' + CAST(freq_subday_interval AS VARCHAR(7)) + ' sec'
+		WHEN freq_subday_type = 4 
+			THEN ' every ' + CAST(freq_subday_interval AS VARCHAR(7)) + ' min'
+		WHEN freq_subday_type = 8 
+			THEN ' every ' + CAST(freq_subday_interval AS VARCHAR(7)) + ' hours'
+		ELSE '' 
+	END AS frequency,
 	CASE
 		WHEN freq_subday_type = 2 
 			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':') 
@@ -170,7 +175,16 @@ SELECT
 		WHEN freq_subday_type = 8 
 			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
-	END AS TIME,
+	END AS starting_time,
+	CASE
+		WHEN freq_subday_type = 2 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 4 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 8 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+	END AS ending_time,
 	sysjobactivity.last_executed_step_date AS last_run_date,
 	CASE
 		WHEN sysjobservers.last_run_outcome = 0 THEN 'fail' 
@@ -181,6 +195,7 @@ SELECT
 		ELSE 'unknown' END AS result,
 	sysjobservers.last_run_duration AS duration,
 	sysjobactivity.next_scheduled_run_date AS next_run_date,
+	CAST(active_end_date AS VARCHAR(10)) + ',' + CAST(active_end_time AS VARCHAR(10)) AS end_run_date,
 	sysjobs.date_modified
 FROM msdb.dbo.sysjobs
 INNER JOIN msdb.dbo.sysjobschedules	 ON sysjobs.job_id = sysjobschedules.job_id
@@ -190,18 +205,14 @@ INNER JOIN msdb.dbo.sysjobservers 	 ON sysjobservers.job_id = sysjobs.job_id
 WHERE freq_type = 16
 AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.sysjobactivity)
 
-UNION
+UNION ALL
 
 -- jobs with a monthly schedule(freq_type = 32)
 SELECT
 	sysjobs.[name] AS job_name,
-	CASE
-		WHEN sysjobactivity.start_execution_date IS NULL THEN 'Not running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NULL THEN 'Running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NOT NULL THEN 'Not running'
-	END AS 'RunStatus',
 	CASE WHEN sysjobs.[enabled] = 1 THEN 'Enabled' ELSE 'Disabled' END AS [enabled],
-	'Monthly ' +	
+	CASE WHEN CAST(freq_recurrence_factor AS VARCHAR(7)) = 1 THEN ' Monthly ' 
+		ELSE 'every ' + CAST(freq_recurrence_factor AS VARCHAR(7)) + ' month(s) on ' END +
 	CASE
 		WHEN freq_relative_interval = 1	 THEN 'First '
 		WHEN freq_relative_interval = 2	 THEN 'Second '
@@ -218,7 +229,16 @@ SELECT
 	CASE WHEN freq_interval = 7	 THEN 'Saturday, '		ELSE '' END +
 	CASE WHEN freq_interval = 8	 THEN 'Day of Month, '	ELSE '' END +
 	CASE WHEN freq_interval = 9	 THEN 'Weekday, '		ELSE '' END +
-	CASE WHEN freq_interval = 10 THEN 'Weekend day, '	ELSE '' END AS frequency,
+	CASE WHEN freq_interval = 10 THEN 'Weekend day, '	ELSE '' END +
+	CASE
+		WHEN freq_subday_type = 2 
+			THEN ' every ' + CAST(freq_subday_interval AS VARCHAR(7)) + ' sec'
+		WHEN freq_subday_type = 4 
+			THEN ' every ' + CAST(freq_subday_interval AS VARCHAR(7)) + ' min'
+		WHEN freq_subday_type = 8 
+			THEN ' every ' + CAST(freq_subday_interval AS VARCHAR(7)) + ' hours'
+		ELSE '' 
+	END AS frequency,
 	CASE
 		WHEN freq_subday_type = 2 
 			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':') 
@@ -228,6 +248,15 @@ SELECT
 			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 	END AS starting_time,
+	CASE
+		WHEN freq_subday_type = 2 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 4 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 8 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+	END AS ending_time,
 	sysjobactivity.last_executed_step_date AS last_run_date,
 	CASE
 		WHEN sysjobservers.last_run_outcome = 0 THEN 'fail' 
@@ -238,6 +267,7 @@ SELECT
 		ELSE 'unknown' END AS result,
 	sysjobservers.last_run_duration AS duration,
 	sysjobactivity.next_scheduled_run_date AS next_run_date,
+	CAST(active_end_date AS VARCHAR(10)) + ',' + CAST(active_end_time AS VARCHAR(10)) AS end_run_date,
 	sysjobs.date_modified
 FROM msdb.dbo.sysjobs
 INNER JOIN msdb.dbo.sysjobschedules	 ON sysjobs.job_id = sysjobschedules.job_id
@@ -247,16 +277,11 @@ INNER JOIN msdb.dbo.sysjobservers 	 ON sysjobservers.job_id = sysjobs.job_id
 WHERE freq_type = 32
 AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.sysjobactivity)
 
-UNION
+UNION ALL
 
 -- jobs with a schedule(When SQL Server Agent Start)
 SELECT
 	sysjobs.[name] AS job_name,
-	CASE
-		WHEN sysjobactivity.start_execution_date IS NULL THEN 'Not running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NULL THEN 'Running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NOT NULL THEN 'Not running'
-	END AS 'RunStatus',
 	CASE WHEN sysjobs.[enabled] = 1 THEN 'Enabled' ELSE 'Disabled' END AS [enabled],
 	'When SQL Server Agent Start' AS frequency,
 	CASE
@@ -268,6 +293,15 @@ SELECT
 			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 	END AS starting_time,
+	CASE
+		WHEN freq_subday_type = 2 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 4 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 8 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+	END AS ending_time,
 	sysjobactivity.last_executed_step_date AS last_run_date,
 	CASE
 		WHEN sysjobservers.last_run_outcome = 0 THEN 'fail' 
@@ -278,6 +312,7 @@ SELECT
 		ELSE 'unknown' END AS result,
 	sysjobservers.last_run_duration AS duration,
 	sysjobactivity.next_scheduled_run_date AS next_run_date,
+	CAST(active_end_date AS VARCHAR(10)) + ',' + CAST(active_end_time AS VARCHAR(10)) AS end_run_date,
 	sysjobs.date_modified
 FROM msdb.dbo.sysjobs
 INNER JOIN msdb.dbo.sysjobschedules	 ON sysjobs.job_id = sysjobschedules.job_id
@@ -287,16 +322,11 @@ INNER JOIN msdb.dbo.sysjobservers 	 ON sysjobservers.job_id = sysjobs.job_id
 WHERE freq_type = 64
 AND session_id = (SELECT MAX(session_id) FROM msdb.dbo.sysjobactivity)
 
-UNION
+UNION ALL
 
 -- jobs with a schedule(When SQL Server Agent Start)
 SELECT
 	sysjobs.[name] AS job_name,
-	CASE
-		WHEN sysjobactivity.start_execution_date IS NULL THEN 'Not running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NULL THEN 'Running'
-		WHEN sysjobactivity.start_execution_date IS NOT NULL AND sysjobactivity.stop_execution_date IS NOT NULL THEN 'Not running'
-	END AS 'RunStatus',
 	CASE WHEN sysjobs.[enabled] = 1 THEN 'Enabled' ELSE 'Disabled' END AS [enabled],
 	'Execute when the computer is idle' AS frequency,
 	CASE
@@ -308,6 +338,15 @@ SELECT
 			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) +  CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 	END AS starting_time,
+	CASE
+		WHEN freq_subday_type = 2 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 4 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		WHEN freq_subday_type = 8 
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_end_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+	END AS ending_time,
 	sysjobactivity.last_executed_step_date AS last_run_date,
 	CASE
 		WHEN sysjobservers.last_run_outcome = 0 THEN 'fail' 
@@ -318,6 +357,7 @@ SELECT
 		ELSE 'unknown' END AS result,
 	sysjobservers.last_run_duration AS duration,
 	sysjobactivity.next_scheduled_run_date AS next_run_date,
+	CAST(active_end_date AS VARCHAR(10)) + ',' + CAST(active_end_time AS VARCHAR(10)) AS end_run_date,
 	sysjobs.date_modified
 FROM msdb.dbo.sysjobs
 INNER JOIN msdb.dbo.sysjobschedules	 ON sysjobs.job_id = sysjobschedules.job_id
