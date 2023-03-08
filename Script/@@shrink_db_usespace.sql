@@ -35,8 +35,8 @@ WHERE 1 = 1
 --AND [Currently_Space(MB)] <> 8
 --AND NAME NOT LIKE '%base'
 --AND NAME NOT LIKE '%today%'
+--AND NAME NOT LIKE '%log%'
 ORDER BY 1
-
 
 --SET NOCOUNT ON;
 --DECLARE @I INT = 20719 --目前檔案size
