@@ -1,0 +1,5 @@
+ALTER INDEX [idx_acct_id_ticket] ON dbo.ticket_all REORGANIZE PARTITION = 80 WITH ( LOB_COMPACTION = ON );
+ALTER INDEX [idx_merchant_date] ON dbo.ticket_all REORGANIZE PARTITION = 80 WITH ( LOB_COMPACTION = ON );
+ALTER INDEX [idx_ticket_date] ON dbo.ticket_all REORGANIZE PARTITION = 80 WITH ( LOB_COMPACTION = ON );
+ALTER INDEX [idx_acct_id_ticket] ON dbo.ticket REORGANIZE PARTITION = 9 WITH ( LOB_COMPACTION = ON );
+ALTER INDEX [PK_fish_acct_daily_tran] ON dbo.fish_acct_daily_tran REORGANIZE PARTITION = ALL WITH ( LOB_COMPACTION = ON );
