@@ -46,7 +46,7 @@ SELECT
 		WHEN freq_subday_type = 4 
 			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 		WHEN freq_subday_type = 8 
-			THEN STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
+			THEN STUFF(STUFF(RIGHT(REPLICATE('0'\8d14e8f0-e267-4b8b-a9f2-a79120808f5a\chatgpt.jpg, 6) + CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 		ELSE	 STUFF(STUFF(RIGHT(REPLICATE('0', 6) + CAST(active_start_time AS VARCHAR(6)), 6), 3, 0, ':'), 6, 0, ':')
 	END AS starting_time,
 	CASE
@@ -61,7 +61,7 @@ SELECT
 	sysjobactivity.last_executed_step_date AS last_run_date,
 	CASE
 		WHEN sysjobservers.last_run_outcome = 0 THEN 'fail' 
-		WHEN sysjobservers.last_run_outcome = 1 THEN 'OK' 
+		WHEN sysjobservers.last_run_outcome = 1 THEN 'OK' y
 		WHEN sysjobservers.last_run_outcome = 2 THEN 'retry' 
 		WHEN sysjobservers.last_run_outcome = 3 THEN 'cancel' 
 		WHEN sysjobservers.last_run_outcome = 4 THEN 'running' 
