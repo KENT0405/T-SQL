@@ -2,7 +2,7 @@
 -------------------------diff_backup-------------------------
 -------------------------------------------------------------
 
-DECLARE 
+DECLARE
 	 @bak_path		VARCHAR(100) = 'D:\BAK\diff'
 	,@compression	VARCHAR(1) = 'Y' --要不要壓縮( Y / N )
 	,@SQL			NVARCHAR(MAX)
@@ -10,17 +10,17 @@ DECLARE
 IF (@bak_path <> '')
 BEGIN
 	SET @SQL = N'
-	BACKUP DATABASE ['+ DB_NAME() + '] 
+	BACKUP DATABASE ['+ DB_NAME() + ']
 	TO DISK = N'''+ @bak_path + '\' + DB_NAME() + FORMAT(GETDATE(),'yyyyMMddhhmm') + 'diff.bak''
-	WITH DIFFERENTIAL, NOFORMAT, NOINIT, 
+	WITH DIFFERENTIAL, NOFORMAT, NOINIT,
 	NAME = N''' + DB_NAME() + '-diff_backup'',
-	SKIP, NOREWIND, NOUNLOAD, ' + 
-	CASE WHEN @compression = 'Y' THEN 'COMPRESSION,' ELSE '' END +  
+	SKIP, NOREWIND, NOUNLOAD, ' +
+	CASE WHEN @compression = 'Y' THEN 'COMPRESSION,' ELSE '' END +
 	' STATS = 10
 	--,MAXTRANSFERSIZE = 4194304 , BUFFERCOUNT = 48'
 END
 
 PRINT @SQL
 
---XEC sp_executesql @SQL
+--EXEC sp_executesql @SQL
 GO
