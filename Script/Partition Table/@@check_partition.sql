@@ -1,4 +1,4 @@
-SELECT  
+SELECT
 	 OBJECT_NAME(p.object_id) as TableName
 	,p.partition_number as PartitionNumber
 	,prv_left.value as LowerBoundary
@@ -29,7 +29,8 @@ AND p.index_id < 2 --( 0:堆積 / 1:叢集索引 / >1:非叢集索引 )
 --AND row_count > 0
 --AND partition_number < 22
 --AND fg.name = 'FG_LOG_202107'
---AND OBJECT_NAME(p.object_id) = 'mem_credit_log'
+--AND prv_left.value BETWEEN CAST(GETDATE()-2 AS DATETIME) AND CAST(GETDATE()-1 AS DATETIME)
+--AND OBJECT_NAME(p.object_id) = 'one_wallet_transfer_all'
 ORDER BY 1,2
 GO
 
