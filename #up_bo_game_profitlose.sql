@@ -1,19 +1,3 @@
-/*
-declare @p15 int
-set @p15=NULL
-exec sp_executesql N'EXEC [dbo].[up_bo_game_profitlose]  @P0, @P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12 OUT',
-N'@P0 datetime2,@P1 datetime2,@P2 varchar(8000),@P3 bit,@P4 bit,@P5 varchar(8000),@P6 varchar(8000),@P7 varchar(8000),@P8 varchar(8000),@P9 varchar(8000),@P10 int,@P11 int,@P12 int OUTPUT',
-'2023-03-01 00:00:00','2023-03-19 23:59:59.9970000','-',1,1,'','','','','',1,20,@p15 output
-select @p15
-GO
-
-declare @p15 int
-set @p15=NULL
-exec sp_executesql N'EXEC [dbo].[#up_bo_game_profitlose]  @P0, @P1, @P2, @P3, @P4, @P5, @P6, @P7, @P8, @P9, @P10, @P11, @P12 OUT',
-N'@P0 datetime2,@P1 datetime2,@P2 varchar(8000),@P3 bit,@P4 bit,@P5 varchar(8000),@P6 varchar(8000),@P7 varchar(8000),@P8 varchar(8000),@P9 varchar(8000),@P10 int,@P11 int,@P12 int OUTPUT',
-'2023-03-01 00:00:00','2023-03-19 23:59:59.9970000','-',1,1,'','','','','',1,20,@p15 output
-select @p15
-*/
 -- =============================================
 -- Author:		<kent/luna>
 -- Create date: <2022-12-13>
@@ -64,10 +48,9 @@ BEGIN
 	END
 
 	SELECT
-		CASE WHEN @IsAll = 1 THEN
-			CASE WHEN @SumGroup = 1
-			THEN mr.Merchant_Code
-			ELSE mdr.Merchant_Code END
+		CASE 
+		WHEN @IsAll = 1 AND @SumGroup = 1 THEN mr.Merchant_Code
+		WHEN @IsAll = 1 AND @SumGroup <> 1 THEN mdr.Merchant_Code
 		ELSE mdr.Merchant_Code END  AS merchant_code,
 		mdr.curr_id					AS curr_id,
 		mdr.game_category			AS game_category,
@@ -91,10 +74,9 @@ BEGIN
 	AND (mdr.provider = @Provider OR @Provider = '')
 	AND (mdr.game_category = @GameCategory OR @GameCategory = '')
 	GROUP BY
-		CASE WHEN @IsAll = 1 THEN
-			CASE WHEN @SumGroup = 1
-			THEN  mr.Merchant_Code
-			ELSE  mdr.Merchant_Code  END
+		CASE
+		WHEN @IsAll = 1 AND @SumGroup = 1 THEN mr.Merchant_Code
+		WHEN @IsAll = 1 AND @SumGroup <> 1 THEN mdr.Merchant_Code
 		ELSE mdr.Merchant_Code END,
 		mdr.curr_id,
 		mdr.game_category,
