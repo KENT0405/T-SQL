@@ -1,4 +1,7 @@
-DECLARE @Yesterday			DATE = GETDATE() - 2,
+------------------------------------------------------------
+------------------------每日重組index(tckl)------------------
+------------------------------------------------------------
+DECLARE @Yesterday			DATE = GETDATE() - 1,
 		@PartitionNumber	INT,
 		@SQL_reorganizestr	NVARCHAR(MAX) = '',
 		@i					INT = 1
