@@ -50,8 +50,8 @@ BEGIN
 	BEGIN
 		IF (@MerchantCode <> '')
 		BEGIN
-			SET @SQL += N'
-			SELECT * INTO #merchant_code
+			SET @SQL += N' 
+			SELECT * INTO #merchant_code 
 			FROM FN_StrToTable (REPLACE(REPLACE('''+@MerchantCode+ ''',''['',''''),'']'',''''))) '
 		END
 	END
@@ -68,8 +68,9 @@ BEGIN
 	AND (mdr.game_category = @GameCode OR @GameCode = '''')
 	AND merchant_Code IN (SELECT * FROM #merchant_code)
 
+	'+ CASE WHEN @IsAll = 1 AND @SumGroup = 1 THEN '
 	SELECT
-		' + CASE WHEN @IsAll = 1 AND @SumGroup = 1 THEN '''-''' ELSE 'mdr.Merchant_Code' END + ' AS MerchantCode
+		''-'' AS MerchantCode
 		,mdr.server_code AS ServerCode
 		,mdr.curr_id AS CurrencyId
 		,mdr.game_category AS GameCode
@@ -94,7 +95,6 @@ BEGIN
 	AND mdr.tran_date >= curr_mth_start
 	AND mdr.tran_date < curr_mth_end
 	GROUP BY
-	' + CASE WHEN @IsAll = 1 AND @SumGroup = 1 THEN '' ELSE 'mdr.Merchant_Code,' END + '
 		mdr.curr_id,
 		mdr.game_category,
 		mdr.game_code,
@@ -111,8 +111,54 @@ BEGIN
 		WHEN 2 THEN ' TotalBetNum DESC'
 		WHEN 3 THEN ' TotalPlayer DESC' END + '
 	OFFSET (@PageIndex - 1) * @PageSize ROWS
-	FETCH NEXT @PageSize ROWS ONLY;
+	FETCH NEXT @PageSize ROWS ONLY;'
 
+	ELSE '
+		SELECT
+		mdr.Merchant_Code AS MerchantCode
+		,mdr.server_code AS ServerCode
+		,mdr.curr_id AS CurrencyId
+		,mdr.game_category AS GameCode
+		,mdr.game_code AS BetType
+		,SUM(mdr.bet_count) AS TotalBetNum
+		,SUM(mdr.ttl_bet) AS TotalBetAmount
+		,SUM(mdr.success_bet) AS TotalValidBet
+		,SUM(mdr.wl_amt) AS TotalWL
+		,COUNT(distinct mdr.login_id + ''@'' + merchant_code) AS TotalPlayer
+		,SUM(mdr.jp_contribute_amt) AS JPContributeAmt
+		,SUM(mdr.jp_win) AS JpWin
+		,SUM(mdr.success_bet * real_curr_rate_after) AS MainValidBetAmount
+		,SUM(mdr.jp_contribute_amt * real_curr_rate_after) AS MainJPContributeAmt
+		,SUM(mdr.wl_amt * real_curr_rate_after) AS MainTotalWL
+		,mdr.server_code
+	INTO #temp_page
+	FROM #temp_main as mdr WITH (NOLOCK)
+	INNER JOIN sys_currency_log AS scl WITH(NOLOCK)
+	ON scl.curr_id = mdr.curr_id
+	AND scl.curr_status = 1
+	AND scl.curr_month = CONVERT(VARCHAR(7),mdr.tran_date,120)
+	AND mdr.tran_date >= curr_mth_start
+	AND mdr.tran_date < curr_mth_end
+	GROUP BY
+		mdr.Merchant_Code,
+		mdr.curr_id,
+		mdr.game_category,
+		mdr.game_code,
+		mdr.server_code
+
+	SET @RecordsCount = @@ROWCOUNT
+
+	SELECT *
+	FROM #temp_page
+	ORDER BY
+		ServerCode ASC,
+	' + CASE @Type
+		WHEN 1 THEN ' TotalValidBet DESC'
+		WHEN 2 THEN ' TotalBetNum DESC'
+		WHEN 3 THEN ' TotalPlayer DESC' END + '
+	OFFSET (@PageIndex - 1) * @PageSize ROWS
+	FETCH NEXT @PageSize ROWS ONLY;' END +
+	'
 	SELECT
 		COUNT(DISTINCT mdr.login_id + ''@'' + merchant_code) AS TotalPlayer,
 		SUM(mdr.bet_count) AS TotalBetNum,
