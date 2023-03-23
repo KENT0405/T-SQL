@@ -73,7 +73,7 @@ BEGIN
 	AND (mdr.channel = @Channel OR @Channel = '')
 	AND (mdr.curr_id = @Currency OR @Currency = '')
 	AND (mdr.game_category = @GameCode OR @GameCode = '')
-	AND (merchant_Code IN (SELECT * FROM #merchant_code))
+	AND (merchant_Code IN (SELECT * FROM #merchant_code) OR @Merchant_Code = '')
 
 	IF(@IsAll = 1 AND @SumGroup = 1)
 	BEGIN
