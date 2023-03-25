@@ -57,12 +57,12 @@ BEGIN
 
 	IF(@GameWin <> '')
 	BEGIN
-		SET @SQL_condition += ' AND gp.games_win >= @GameWin'
+		SET @SQL_condition += ' AND gp.games_win >= CAST(@GameWin AS DECIMAL(18,6))'
 	END
 
 	IF(@GameLose <> '')
 	BEGIN
-		SET @SQL_condition += ' AND gp.games_lose >= @GameLose'
+		SET @SQL_condition += ' AND gp.games_lose >= CAST(@GameLose AS DECIMAL(18,6))'
 	END
 
 	IF(@Percent > 0)
