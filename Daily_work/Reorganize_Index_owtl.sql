@@ -1,7 +1,7 @@
 ------------------------------------------------------------
 ------------------------每日重組index(owtl)------------------
 ------------------------------------------------------------
-DECLARE @Yesterday			DATE = GETDATE() ,
+DECLARE @Yesterday			DATE = GETDATE() - 1,
 		@PartitionNumber	INT,
 		@SQL_reorganizestr	NVARCHAR(MAX) = '',
 		@i					INT = 1
