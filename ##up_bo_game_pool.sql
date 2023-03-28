@@ -13,7 +13,7 @@ CREATE OR ALTER PROCEDURE [dbo].[##up_bo_game_pool]
 	@Rtp			INT = 0 ,
 	@GameWin		VARCHAR(10) = '',
 	@GameLose		VARCHAR(10) = '',
-	@Percent		INT = 0 ,
+	@Percent		INT = 0,
 	@PageIndex		INT = 1,
 	@PageSize		INT = 10,
 	@RecordsCount	INT = 0 OUTPUT
@@ -24,6 +24,8 @@ BEGIN
 	DECLARE
 		@SQL			NVARCHAR(MAX) = '',
 		@SQL_condition	NVARCHAR(MAX) = ''
+
+	DROP TABLE IF EXISTS #temp;
 
 	IF(@CurrId <> '')
 	BEGIN
@@ -67,7 +69,7 @@ BEGIN
 
 	IF(@Percent > 0)
 	BEGIN
-		SET @SQL_condition +=' AND gls.max_lose_limit < (gp.games_lose  - gp.games_win * gp.rtp / (CASE WHEN gp.rtp > 100 THEN 1000 ELSE 100 END)) * 100 / (CASE WHEN gp.game_category = ''AD'' THEN 100 ELSE @Percent END)'
+		SET @SQL_condition +=' AND gls.max_lose_limit < (gp.games_lose - gp.games_win * gp.rtp / (CASE WHEN gp.rtp > 100 THEN 1000 ELSE 100 END)) * 100 / (CASE WHEN gp.game_category = ''AD'' THEN 100 ELSE @Percent END)'
 	END
 
 	SET @SQL = '
@@ -75,8 +77,8 @@ BEGIN
 		gp.*,
 		gls.max_lose_limit real_max_lose_limit
 	INTO #temp
-	FROM game_pool gp WITH(NOLOCK)
-	LEFT JOIN game_limit_setting gls WITH(NOLOCK)
+	FROM game_pool gp WITH (NOLOCK)
+	LEFT JOIN game_limit_setting gls WITH (NOLOCK)
 	ON gp.game_code = gls.game_code
 	AND gp.curr_id = gls.curr_id
 	WHERE 1 = 1
@@ -87,17 +89,17 @@ BEGIN
 	SELECT *
 	FROM #temp
 	ORDER BY
-		gp.merchant_code,
-		gp.curr_id,
-		gp.game_code,
-		gp.volatility,
-		gp.rtp
+		merchant_code,
+		curr_id,
+		game_code,
+		volatility,
+		rtp
 	OFFSET (@PageIndex - 1) * @PageSize ROWS
 	FETCH NEXT @PageSize ROWS ONLY'
 
 	--PRINT @SQL
 
-	exec sp_executesql @SQL,N'
+	EXEC sp_executesql @SQL,N'
 	@MerchantCode	VARCHAR(10),
 	@CurrId			VARCHAR(10),
 	@GameType		VARCHAR(10),
