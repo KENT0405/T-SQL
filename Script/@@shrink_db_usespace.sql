@@ -1,18 +1,18 @@
 ;WITH shink
 AS
 (
-	SELECT 
+	SELECT
 		ISNULL(b.groupname,'') AS [FileGroup],
 		Name,
 		[Filename] AS [File_path],
 		CONVERT (DECIMAL(15,0),ROUND(a.Size/128.000,2)) [Currently_Space(MB)],
 		CONVERT (DECIMAL(15,0),ROUND(FILEPROPERTY(a.Name,'SpaceUsed')/128.000,2)) AS [Space_Used(MB)],
-		CONVERT (DECIMAL(15,0),ROUND((a.Size-FILEPROPERTY(a.Name,'SpaceUsed'))/128.000,2)) AS [Available_Space(MB)]		
-	FROM dbo.sysfiles a 
-	LEFT JOIN sysfilegroups b 
+		CONVERT (DECIMAL(15,0),ROUND((a.Size-FILEPROPERTY(a.Name,'SpaceUsed'))/128.000,2)) AS [Available_Space(MB)]
+	FROM dbo.sysfiles a
+	LEFT JOIN sysfilegroups b
 	ON a.groupid = b.groupid
 )
-SELECT 
+SELECT
 	*
 	,CONVERT(DECIMAL(5,2),[Space_Used(MB)] / [Currently_Space(MB)]) AS Rate
 	,'DBCC SHRINKFILE (N''' + Name + ''' , 8) WITH NO_INFOMSGS;' AS shrinkstr
@@ -49,6 +49,3 @@ ORDER BY 1
 --SET @I -= 30
 
 --END
-
-
-
