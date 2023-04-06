@@ -1,5 +1,7 @@
 /*
-exec sp_executesql N'EXEC [dbo].[#up_bo_profitlose]  @P0, @P1, @P2, @P3, @P4, @P5, @P6 ',N'@P0 datetime2,@P1 datetime2,@P2 varchar(8000),@P3 bit,@P4 varchar(8000),@P5 varchar(8000),@P6 varchar(8000)','2023-03-01 00:00:00','2023-03-17 23:59:59.9970000','-',1,'','',''
+exec sp_executesql N'EXEC [dbo].[#up_bo_profitlose]  @P0, @P1, @P2, @P3, @P4, @P5, @P6 ',
+N'@P0 datetime2,@P1 datetime2,@P2 varchar(8000),@P3 bit,@P4 varchar(8000),@P5 varchar(8000),@P6 varchar(8000)',
+'2023-03-01 00:00:00','2023-03-17 23:59:59.9970000','-',1,'','',''
 */
 -- =============================================
 -- Author:		<sl.chen,Tony>
@@ -118,7 +120,7 @@ BEGIN
 	GROUP BY
 		adt.Merchant_Code,
 		adt.currency
-	OPTION(RECOMPILE)
+	--OPTION(RECOMPILE)
 
 	SELECT
 		MerchantCode,
