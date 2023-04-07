@@ -53,7 +53,7 @@ BEGIN
 			currency,
 			promotion_id,
 			ISNULL(draw_amt,0) draw_amt
-		FROM [dbo].[promotion_daily_tran]  WITH (NOLOCK)
+		FROM [dbo].[promotion_daily_tran] WITH (NOLOCK)
 		WHERE tran_date BETWEEN @BeginDate AND @EndDate
 		AND (currency = @Currency OR @Currency = '')
 		AND ([provider] = @Provider OR @Provider = '')
@@ -120,7 +120,6 @@ BEGIN
 	GROUP BY
 		adt.Merchant_Code,
 		adt.currency
-	--OPTION(RECOMPILE)
 
 	SELECT
 		MerchantCode,
