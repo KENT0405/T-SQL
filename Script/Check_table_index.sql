@@ -1,5 +1,7 @@
+WITH CTE
+AS
+(
 SELECT
-    --QUOTENAME(SCHEMA_NAME(t.schema_id)) AS SchemaName,
     QUOTENAME(t.name) AS TableName,
     QUOTENAME(i.name) AS IndexName,
     STUFF((
@@ -18,12 +20,19 @@ SELECT
         ORDER BY ic.index_column_id
         FOR XML PATH
     ), '<row>', ', '), '</row>', ''), 1, 2, '') AS IncludedColumns,
-	i.type_desc,
+	i.[type_desc] AS index_type,
     i.is_primary_key,
     i.is_unique,
-    i.is_unique_constraint
+    i.is_unique_constraint,
+	i.fill_factor,
+	p.data_compression
 FROM sys.tables AS t
 INNER JOIN sys.indexes AS i ON t.object_id = i.object_id
+INNER JOIN sys.partitions AS p ON p.object_id = i.object_id AND p.index_id = i.index_id
 WHERE t.is_ms_shipped = 0
 AND i.type <> 0
---AND QUOTENAME(t.name) = '[ticket_all]'
+AND QUOTENAME(t.name) = '[ticket_all]'
+--AND QUOTENAME(i.name) = '[idx_acct_id]'
+)
+SELECT DISTINCT *
+FROM CTE
