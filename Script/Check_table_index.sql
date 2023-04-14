@@ -34,5 +34,4 @@ AND i.type <> 0
 AND QUOTENAME(t.name) = '[ticket_all]'
 --AND QUOTENAME(i.name) = '[idx_acct_id]'
 )
-SELECT DISTINCT *
-FROM CTE
+SELECT DISTINCT * FROM CTE
