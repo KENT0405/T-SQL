@@ -1,4 +1,4 @@
-SELECT 
+SELECT
     t.NAME AS TableName,
     SUM(p.rows) AS RowCounts
 FROM sys.tables t
@@ -9,8 +9,9 @@ INNER JOIN sys.data_spaces d ON a.data_space_id = d.data_space_id
 WHERE 1= 1
 AND i.index_id < 2		-- 0 heap, 1 cluster , 2 non-cluster
 AND t.is_ms_shipped = 0
-AND i.OBJECT_ID > 255 
+AND i.OBJECT_ID > 255
 AND p.rows > 0
+AND a.type_desc = 'IN_ROW_DATA'
 --AND t.NAME like '%daily_tran%'
 GROUP BY t.Name
 ORDER BY 2 DESC
