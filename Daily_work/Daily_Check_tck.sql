@@ -253,7 +253,7 @@ GO
 -------------------------Check_Lock----------------------------
 ---------------------------------------------------------------
 SELECT
-	v.value('(@timestamp)[1]', 'DATETIME2') AS [timestamp],
+	DATEADD(HOUR,8,v.value('(@timestamp)[1]', 'DATETIME2')) AS [timestamp],
 	n.value('.', 'NVARCHAR(MAX)') AS [statement],
 	ed.event_data AS [event_XML]
 FROM
