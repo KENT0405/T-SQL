@@ -249,3 +249,21 @@ AND n.value('(data[@name="result"]/value)[1]', 'VARCHAR(10)') = 2
 ORDER BY n.value('(@timestamp)[1]', 'DATETIME2') DESC
 GO
 
+---------------------------------------------------------------
+-------------------------Check_Lock----------------------------
+---------------------------------------------------------------
+SELECT
+	v.value('(@timestamp)[1]', 'DATETIME2') AS [timestamp],
+	n.value('.', 'NVARCHAR(MAX)') AS [statement],
+	ed.event_data AS [event_XML]
+FROM
+(
+	SELECT CAST(event_data AS XML) AS event_data
+	FROM sys.fn_xe_file_target_read_file('D:\Events\Lock*.xel', null, null, null)
+) ed
+CROSS APPLY ed.event_data.nodes('//executionStack/frame') AS q(n)
+CROSS APPLY ed.event_data.nodes('event') AS e(v)
+WHERE 1 = 1
+AND v.value('(@name)[1]', 'VARCHAR(50)') = 'xml_deadlock_report'
+AND v.value('(@timestamp)[1]', 'DATETIME') >= GETDATE() - 3
+ORDER BY v.value('(@timestamp)[1]', 'DATETIME2') DESC
