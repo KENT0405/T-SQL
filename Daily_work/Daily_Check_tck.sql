@@ -243,7 +243,7 @@ FROM (
 	FROM sys.fn_xe_file_target_read_file('D:\Events\T-SQL*.xel', null, null, null)) ed
 CROSS APPLY ed.event_data.nodes('event') AS q(n)
 WHERE 1=1
-AND n.value('(data[@name="statement"]/value)[1]', 'NVARCHAR(MAX)') LIKE '%declare%'
+--AND n.value('(data[@name="statement"]/value)[1]', 'NVARCHAR(MAX)') LIKE '%declare%'
 AND n.value('(@timestamp)[1]', 'DATETIME2') >= CAST(GETDATE()-3 AS DATE)
 AND n.value('(data[@name="result"]/value)[1]', 'VARCHAR(10)') = 2
 ORDER BY n.value('(@timestamp)[1]', 'DATETIME2') DESC
