@@ -30,7 +30,7 @@ AS
 					  LEFT JOIN sys.partition_schemes S
 	ON i.data_space_id = S.data_space_id
 	WHERE 1 = 1
-	AND p.rows > 100
+	--AND p.rows > 100
 	AND i.name IS NOT NULL
 )
 SELECT DISTINCT updatestatstr
