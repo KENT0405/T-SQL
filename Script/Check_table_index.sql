@@ -25,13 +25,13 @@ SELECT
     i.is_unique,
     i.is_unique_constraint,
 	i.fill_factor,
-	p.data_compression
+	p.[data_compression] --NONE = 0, ROW = 1, PAGE = 2
 FROM sys.tables AS t
 INNER JOIN sys.indexes AS i ON t.object_id = i.object_id
 INNER JOIN sys.partitions AS p ON p.object_id = i.object_id AND p.index_id = i.index_id
 WHERE t.is_ms_shipped = 0
 AND i.type <> 0
-AND QUOTENAME(t.name) = '[ticket_all]'
+--AND QUOTENAME(t.name) = '[ticket_all]'
 --AND QUOTENAME(i.name) = '[idx_acct_id]'
 )
 SELECT DISTINCT * FROM CTE
