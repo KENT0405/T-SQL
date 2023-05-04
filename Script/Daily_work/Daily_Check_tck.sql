@@ -6,6 +6,7 @@ DECLARE @SQL NVARCHAR(MAX),
 		@date_range VARCHAR(100),
 		@date_range_PK VARCHAR(100),
 		@status INT,
+		@log_date DATE,
 		@ID VARCHAR(10),
 		@i INT = 1
 
@@ -35,6 +36,7 @@ BEGIN
 	)
 	SELECT  @ID = CTE.id,
 			@status = CTE.status,
+			@log_date = CTE.log_date,
 			@date_range = 'save_date >= ''' + FORMAT(CTE.save_start_date,'yyyy-MM-dd HH:mm:ss.000') + ''' AND save_date < ''' + FORMAT(CTE.save_end_date,'yyyy-MM-dd HH:mm:ss.000') + '''' ,
 			@date_range_PK =  'A.save_date >= ''' + FORMAT(CTE.save_start_date,'yyyy-MM-dd HH:mm:ss.000') + ''' AND A.save_date < ''' + FORMAT(CTE.save_end_date,'yyyy-MM-dd HH:mm:ss.000') + ''''
 	FROM CTE
@@ -43,11 +45,12 @@ BEGIN
 	SET @SQL = N'
 	DECLARE @copy_records_count VARCHAR(30) = '''',
 			@del_records_count VARCHAR(30) = ''''' +
-	CASE WHEN @status = -1 THEN N'
+	CASE
+	WHEN @status = -1 AND @log_date = CAST(GETDATE() AS DATE) THEN N'
 	----------------------------------------------------------------------------------------
 	INSERT INTO ticket_all
 	SELECT *
-	FROM ticket_switch WITH (NOLOCK)
+	FROM ticket WITH (NOLOCK)
 	WHERE ' + @date_range + '
 
 	SET @copy_records_count = @@ROWCOUNT
@@ -55,10 +58,21 @@ BEGIN
 	UPDATE sys_data_copy_log
 	SET copy_records_count = @copy_records_count, status = 1
 	WHERE id = ' + @ID
-	ELSE '' END + N'
+	WHEN @status = -1 AND @log_date < CAST(GETDATE() AS DATE) THEN N'
+	----------------------------------------------------------------------------------------
+	INSERT INTO ticket_all
+	SELECT *
+	FROM ticket_copyfail WITH (NOLOCK)
+	WHERE ' + @date_range + '
+
+	SET @copy_records_count = @@ROWCOUNT
+
+	UPDATE sys_data_copy_log
+	SET copy_records_count = @copy_records_count, status = 1
+	WHERE id = ' + @ID + '
 	----------------------------------------------------------------------------------------
 	DELETE
-	FROM ticket_switch
+	FROM ticket_copyfail
 	WHERE ' + @date_range + '
 
 	SET @del_records_count = @@ROWCOUNT
@@ -67,7 +81,7 @@ BEGIN
 	SET del_records_count = @del_records_count,
 		delete_date = GETDATE(),
 		status = CASE WHEN @del_records_count = @copy_records_count THEN 2 ELSE 3 END
-	WHERE id = ' + @ID + '
+	WHERE id = ' + @ID ELSE '' END + '
 	----------------------------------------------------------------------------------------
 	SELECT * FROM sys_data_copy_log WITH(NOLOCK) WHERE id = ' + @ID + '
 	'
@@ -158,7 +172,7 @@ GO
 ---------------------Check_errormessage------------------------
 ---------------------------------------------------------------
 SELECT * FROM sys_jobs_errormessage
-WHERE Error_date >= GETDATE() - 2
+WHERE Error_date >= GETDATE() - 3
 GO
 
 ---------------------------------------------------------------
