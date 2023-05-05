@@ -56,7 +56,7 @@ BEGIN
 	SET @copy_records_count = @@ROWCOUNT
 
 	UPDATE sys_data_copy_log
-	SET copy_records_count = @copy_records_count, status = 1
+	SET copy_records_count = @copy_records_count, status = 4
 	WHERE id = ' + @ID
 	WHEN @status = -1 AND @log_date < CAST(GETDATE() AS DATE) THEN N'
 	----------------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ BEGIN
 	SET @copy_records_count = @@ROWCOUNT
 
 	UPDATE sys_data_copy_log
-	SET copy_records_count = @copy_records_count, status = 1
+	SET copy_records_count = @copy_records_count, status = 4
 	WHERE id = ' + @ID + '
 	----------------------------------------------------------------------------------------
 	DELETE
