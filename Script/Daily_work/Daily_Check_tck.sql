@@ -240,6 +240,7 @@ AND [Currently_Space(MB)] <> 8
 AND NAME NOT LIKE '%base'
 AND NAME NOT LIKE '%today%'
 AND NAME NOT LIKE '%log%'
+AND CONVERT(DECIMAL(5,2),[Space_Used(MB)] / [Currently_Space(MB)]) <= 0.05
 ORDER BY 1
 GO
 
