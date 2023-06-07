@@ -14,3 +14,14 @@ WHERE 1 = 1
 --AND OBJECT_NAME(s.object_id) = 'mem_info'
 GROUP BY s.object_id,scol.object_id, scol.column_id
 ORDER BY 1,2 ASC
+
+/* 詳細統計資訊
+SELECT *
+FROM sys.stats S
+CROSS APPLY sys.dm_db_stats_properties(S.object_id,s.stats_id)
+WHERE s.object_id = object_id('mem_info')
+*/
+
+/* 100%更新統計值
+UPDATE STATISTICS sys_currency_log WITH FULLSCAN
+*/
