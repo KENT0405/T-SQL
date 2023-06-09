@@ -1,0 +1,77 @@
+DECLARE
+	@DT NVARCHAR(MAX),
+	@DT2 NVARCHAR(MAX),
+	@i NVARCHAR(MAX) = '0',
+	@j NVARCHAR(MAX) = '10',
+	@z NVARCHAR(MAX) = '100'
+
+DROP TABLE IF EXISTS result;
+
+CREATE TABLE result
+(
+	sn INT IDENTITY(1,1),
+	DT DATETIME,		--文字存入時間
+	DT2 DATETIME2,		--文字存入時間
+	Real_DT DATETIME,	--實際存入時間
+	result VARCHAR(10),
+	Real_DT2 DATETIME2	--實際存入時間
+)
+
+WHILE(1 = 1)
+BEGIN
+	SET @DT = '2023-06-08 00:00:00.00' + @i
+	SET @DT2 = '2023-06-08 00:00:00.00' + @i + '0000'
+
+	INSERT INTO result
+	SELECT
+		@DT,
+		@DT2,
+		CAST(@DT AS DATETIME),
+		IIF(CAST(@DT AS DATETIME) = CAST(@DT2 AS DATETIME2),'=','<>'),
+		CAST(@DT2 AS DATETIME2)
+
+	IF (@i = 9)
+		BREAK;
+
+	SET @i += 1
+END
+
+WHILE(1 = 1)
+BEGIN
+	SET @DT = '2023-06-08 00:00:00.0' + @j
+	SET @DT2 = '2023-06-08 00:00:00.0' + @j + '0000'
+
+	INSERT INTO result
+	SELECT
+		@DT,
+		@DT2,
+		CAST(@DT AS DATETIME),
+		IIF(CAST(@DT AS DATETIME) = CAST(@DT2 AS DATETIME2),'=','<>'),
+		CAST(@DT2 AS DATETIME2)
+
+	IF (@j = 99)
+		BREAK;
+
+	SET @j += 1
+END
+
+WHILE(1 = 1)
+BEGIN
+	SET @DT = '2023-06-08 00:00:00.' + @z
+	SET @DT2 = '2023-06-08 00:00:00.' + @z + '0000'
+
+	INSERT INTO result
+	SELECT
+		@DT,
+		@DT2,
+		CAST(@DT AS DATETIME),
+		IIF(CAST(@DT AS DATETIME) = CAST(@DT2 AS DATETIME2),'=','<>'),
+		CAST(@DT2 AS DATETIME2)
+
+	IF (@z = 999)
+		BREAK;
+
+	SET @z += 1
+END
+
+SELECT * FROM result
