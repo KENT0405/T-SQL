@@ -1,77 +1,44 @@
-DECLARE
-	@DT NVARCHAR(MAX),
-	@DT2 NVARCHAR(MAX),
-	@i NVARCHAR(MAX) = '0',
-	@j NVARCHAR(MAX) = '10',
-	@z NVARCHAR(MAX) = '100'
-
-DROP TABLE IF EXISTS result;
-
-CREATE TABLE result
+DECLARE @TB_DATETIME TABLE
 (
-	sn INT IDENTITY(1,1),
-	DT DATETIME,		--文字存入時間
-	DT2 DATETIME2,		--文字存入時間
-	Real_DT DATETIME,	--實際存入時間
-	result VARCHAR(10),
-	Real_DT2 DATETIME2	--實際存入時間
+	sn INT,
+	val_datetime VARCHAR(23),	--datetime 文字
+	val_datetime2 VARCHAR(30),	--datetime2 文字
+	real_datetime DATETIME,		--datetime 實際存入時間
+	real_datetime2 DATETIME2,	--datetime2 實際存入時間
+	val_result VARCHAR(2)
 )
 
-WHILE(1 = 1)
+DECLARE
+	@DATETIME VARCHAR(23),
+	@DATETIME2 VARCHAR(30),
+	@RES VARCHAR(2),
+	@I INT = 1
+
+WHILE (@I <= 999)
 BEGIN
-	SET @DT = '2023-06-08 00:00:00.00' + @i
-	SET @DT2 = '2023-06-08 00:00:00.00' + @i + '0000'
 
-	INSERT INTO result
+	SET @DATETIME = '2023-06-08 00:00:00.' + RIGHT('000' + CAST(@I AS VARCHAR(3)),3)
+	SET @DATETIME2 = '2023-06-08 00:00:00.' + RIGHT('000' + CAST(@I AS VARCHAR(3)),3) + '0000'
+
+	SET @RES = IIF(CAST(@DATETIME AS DATETIME) <= CAST(@DATETIME2 AS DATETIME2),'=','<>')
+
+	INSERT INTO @TB_DATETIME
 	SELECT
-		@DT,
-		@DT2,
-		CAST(@DT AS DATETIME),
-		IIF(CAST(@DT AS DATETIME) = CAST(@DT2 AS DATETIME2),'=','<>'),
-		CAST(@DT2 AS DATETIME2)
+		@I,
+		@DATETIME,
+		@DATETIME2,
+		@DATETIME,
+		@DATETIME2,
+		@RES
 
-	IF (@i = 9)
-		BREAK;
-
-	SET @i += 1
+	SET @I += 1
 END
 
-WHILE(1 = 1)
-BEGIN
-	SET @DT = '2023-06-08 00:00:00.0' + @j
-	SET @DT2 = '2023-06-08 00:00:00.0' + @j + '0000'
-
-	INSERT INTO result
-	SELECT
-		@DT,
-		@DT2,
-		CAST(@DT AS DATETIME),
-		IIF(CAST(@DT AS DATETIME) = CAST(@DT2 AS DATETIME2),'=','<>'),
-		CAST(@DT2 AS DATETIME2)
-
-	IF (@j = 99)
-		BREAK;
-
-	SET @j += 1
-END
-
-WHILE(1 = 1)
-BEGIN
-	SET @DT = '2023-06-08 00:00:00.' + @z
-	SET @DT2 = '2023-06-08 00:00:00.' + @z + '0000'
-
-	INSERT INTO result
-	SELECT
-		@DT,
-		@DT2,
-		CAST(@DT AS DATETIME),
-		IIF(CAST(@DT AS DATETIME) = CAST(@DT2 AS DATETIME2),'=','<>'),
-		CAST(@DT2 AS DATETIME2)
-
-	IF (@z = 999)
-		BREAK;
-
-	SET @z += 1
-END
-
-SELECT * FROM result
+SELECT
+	sn,
+	val_datetime AS [datetime 文字],
+	val_datetime2 AS [datetime2 文字],
+	real_datetime AS [datetime 實際存入時間],
+	val_result AS [datetime <= datetime2],
+	real_datetime2 AS [datetime2 實際存入時間]
+FROM @TB_DATETIME
