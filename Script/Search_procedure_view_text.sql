@@ -10,6 +10,6 @@ WHERE
 )
 And
 (
-		o.name LIKE '%PROC_risk_list%'	--查SP或View名稱
+		o.name LIKE '%特定文字%'	--查SP或View名稱
 	OR	c.text LIKE '%特定文字%'	--查SP或View內含文字
 )
