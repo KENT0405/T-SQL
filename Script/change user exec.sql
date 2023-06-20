@@ -4,7 +4,7 @@
 
 EXECUTE AS USER = 'NewUser';
 
-SELECT USER;
+SELECT USER_NAME();
 
 --------------------------------
 --do something.............
