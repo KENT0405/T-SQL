@@ -1,12 +1,13 @@
 --重新設定"伺服器"定序 :
 
 -->先將instance上的DB全部卸載
+-->備好所有重建jobs跟login的腳本
 -->打開SQL安裝的setup
 -->將 cmd 切換到 setup的檔案位址:
 /Setup.exe /QUIET /ACTION=REBUILDDATABASE /INSTANCENAME=MSSQLSERVER /SQLSYSADMINACCOUNTS=.\Administrator /SAPWD=1qaz@WSX3edc /SQLCOLLATION=Chinese_PRC_CI_AS
 
 ---------------------------------------------------------------------------------------
---重新設定"資料庫"定序 : 
+--重新設定"資料庫"定序 :
 USE [master]
 GO
 
@@ -27,8 +28,8 @@ GO
 USE [db_name]
 GO
 
-ALTER TABLE [table_name] ALTER COLUMN F1 varchar(10) COLLATE Chinese_PRC_CI_AS;  
-GO  
+ALTER TABLE [table_name] ALTER COLUMN F1 varchar(10) COLLATE Chinese_PRC_CI_AS;
+GO
 
-ALTER TABLE [table_name] ALTER COLUMN F2 char(10) COLLATE Chinese_PRC_CI_AS;  
-GO  
+ALTER TABLE [table_name] ALTER COLUMN F2 char(10) COLLATE Chinese_PRC_CI_AS;
+GO
