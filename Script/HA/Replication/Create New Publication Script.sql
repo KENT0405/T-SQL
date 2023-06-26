@@ -1,65 +1,160 @@
------------------------------------------Create New Publication Script----------------------------------------------
+-----------------------------------------Create New Replication Script----------------------------------------------
 DECLARE-------------------------------------------------------------------------------------------------------------
 
-	@db_name	VARCHAR(30) = 'eucy_egame_jackpot_data'	,	--輸入想要複寫的DB
-	@pub_name	VARCHAR(30) = 'test'					,	--輸入publication的名稱
+	/********************* Distribution *********************/
+	@dis_db_path		VARCHAR(30) = 'C:\DB\sys_db'		,	--輸入散發者資料庫存放路徑
+	@share_folder_path	VARCHAR(30) = 'C:\Rep'				,	--輸入共享資料夾的路徑及名稱
+
+	/********************* Publication *********************/
+	@db_name	VARCHAR(30) = 'eucy_egame_jackpot_data'		,	--輸入想要複寫的DB
+	@pub_name	VARCHAR(30) = 'test'						,	--輸入publication的名稱
 
 ------------------------------------------------以下為"二擇一"------------------------------------------------------
 
-	@tb_name	VARCHAR(30) = ''						,	--輸入想要複寫的表
-	@proc_name	VARCHAR(30) = 'up_log_currency'			,	--輸入想要複寫的procedure(ex:'up_log_currency' or '-' : all)
+	@tb_name	VARCHAR(30) = 'jackpot_info'				,	--輸入想要複寫的表(only one table)
+	@proc_name	VARCHAR(30) = ''							,	--輸入想要複寫的procedure(ex:'up_log_currency' or '-' : all)
 
 --------------------------------------------以下為"可填" / "可不填"-------------------------------------------------
 
-	@column		VARCHAR(30)	= 'role_id,merchant_code'	,	--輸入想要複寫的欄位(ex: id,ticket_date)
-	@filter		VARCHAR(100) = 'role_id = 9'			,	--輸入Where條件(ex: user_id = ''belle'')
+	@column		VARCHAR(100) = ''							,	--輸入想要複寫的欄位(ex: id,ticket_date)
+	@filter		VARCHAR(100) = ''							,	--輸入Where條件(ex: user_id = ''belle'')
 
 --------------------------------------------------------------------------------------------------------------------
 
-	@insert		INT	= 1									,	--(open = 1 \ close = 2)
-	@delete		INT	= 1									,	--(open = 1 \ close = 2)
-	@update		INT	= 1									,	--(open = 1 \ close = 2)
+	@insert		INT	= 1										,	--(open = 1 \ close = 2)
+	@delete		INT	= 2										,	--(open = 1 \ close = 2)
+	@update		INT	= 1										,	--(open = 1 \ close = 2)
 
 --------------------------------------------------------------------------------------------------------------------
---------------------------------------------------------------------------------------------------------------------
 
+	/********************* Subscription *********************/
+	@Rep_sub	NVARCHAR(MAX) = 'RP-02',
+
+--------------------------------------------------------------------------------------------------------------------
 	@SQL		NVARCHAR(MAX) = '',
 	@SQL_rep_tb	NVARCHAR(MAX) = '',
 	@SQL_proc	NVARCHAR(MAX) = '',
 	@SQL_col	NVARCHAR(MAX) = '',
 	@SQL_synob	NVARCHAR(MAX) = '',
 	@SQL_filter	NVARCHAR(MAX) = '',
+	@SQL_sub	NVARCHAR(MAX) = '',
+	@SQL_dis1	NVARCHAR(MAX) = '',
+	@SQL_dis2	NVARCHAR(MAX) = '',
+	@fname		VARCHAR(30) = '',
 	@sn			INT = 1
 
-IF (@proc_name <> '')
-BEGIN
-	SET @tb_name = ''
-END
-
-DECLARE @TB_or_proc TABLE
+CREATE TABLE #TB_or_proc
 (
 	sn INT IDENTITY(1,1),
 	col VARCHAR(30)
 )
+
+INSERT INTO #TB_or_proc SELECT *
+FROM string_split(@share_folder_path,'\')
+ORDER BY 1 DESC
+
+SELECT @fname = col
+FROM #TB_or_proc
+WHERE sn = 1
+
+SET @SQL_dis1 = N'
+EXEC sp_configure ''show advanced options'',1;
+RECONFIGURE;
+
+EXEC sp_configure ''xp_cmdshell'',1;
+RECONFIGURE;
+
+EXEC sp_configure ''show advanced options'',0;
+RECONFIGURE;
+
+--移除現有的share folder
+EXEC xp_cmdshell ''rmdir "' + @share_folder_path + '"''
+
+--新增一個share folder
+EXEC xp_cmdshell ''md ' + @share_folder_path + ' & net share Rep=' + @share_folder_path + '''
+
+USE master
+EXEC sp_adddistributor
+	@distributor = N''' + @@SERVERNAME + ''',
+	@password = N''''
+
+EXEC sp_adddistributiondb
+	@database = N''distribution'',
+	@data_folder = N''' + @dis_db_path + ''',
+	@log_folder = N''' + @dis_db_path + ''',
+	@log_file_size = 2,
+	@min_distretention = 0,
+	@max_distretention = 72,
+	@history_retention = 48,
+	@deletebatchsize_xact = 5000,
+	@deletebatchsize_cmd = 2000,
+	@security_mode = 1'
+
+SET @SQL_dis2 = N'
+USE [distribution]
+IF NOT EXISTS (SELECT * FROM sysobjects WHERE NAME = ''UIProperties'' AND TYPE = ''U'')
+BEGIN
+	CREATE TABLE UIProperties(id INT)
+END
+
+IF EXISTS (SELECT * FROM :: fn_listextendedproperty(''SnapshotFolder'',''user'',''dbo'',''table'',''UIProperties'',null,null))
+BEGIN
+	EXEC sp_updateextendedproperty
+	N''SnapshotFolder'',
+	N''\\' + @@SERVERNAME + '\' + @fname + ''',
+	''user'',
+	dbo,
+	''table'',
+	''UIProperties''
+END
+ELSE
+BEGIN
+	EXEC sp_addextendedproperty
+	N''SnapshotFolder'',
+	N''\\' + @@SERVERNAME + '\' + @fname + ''',
+	''user'',
+	dbo,
+	''table'',
+	''UIProperties''
+END
+
+EXEC sp_adddistpublisher
+	@publisher = N''' + @@SERVERNAME + ''',
+	@distribution_db = N''distribution'',
+	@security_mode = 1,
+	@working_directory = N''\\' + @@SERVERNAME + '\' + @fname + ''',
+	@trusted = N''false'',
+	@thirdparty_flag = 0,
+	@publisher_type = N''MSSQLSERVER''
+'
+
+TRUNCATE TABLE #TB_or_proc;
+SET @sn = 1
+
+--Create Publication Script
+IF (@proc_name <> '')
+BEGIN
+	SET @tb_name = ''
+END
 
 --新增procedure複寫的格式
 IF (@tb_name = '' AND @proc_name <> '')
 BEGIN
 	IF (@proc_name = '-') --如果為 '-' 則列出所有的procedure
 	BEGIN
-		INSERT INTO @TB_or_proc
+		INSERT INTO #TB_or_proc
 		SELECT [name] FROM sys.procedures ORDER BY [name]
 	END
 	ELSE
 	BEGIN	--否則只有 insert 列出來的項目進去
-		INSERT INTO @TB_or_proc
+		INSERT INTO #TB_or_proc
 		SELECT * FROM STRING_SPLIT(@proc_name,',')
 	END
 
 	WHILE(1 = 1)
 	BEGIN
 		SELECT @proc_name = col
-		FROM @TB_or_proc
+		FROM #TB_or_proc
 		WHERE sn = @sn
 
 		IF @@ROWCOUNT = 0
@@ -88,7 +183,7 @@ END
 --新增table複寫的格式
 IF (@tb_name <> '' AND @proc_name = '')
 BEGIN
-	INSERT INTO @TB_or_proc
+	INSERT INTO #TB_or_proc
 	SELECT * FROM STRING_SPLIT(@column,',')
 
 	SET @SQL_rep_tb = '
@@ -119,7 +214,7 @@ BEGIN
 	WHILE(1 = 1)
 	BEGIN
 		SELECT @column = col
-		FROM @TB_or_proc
+		FROM #TB_or_proc
 		WHERE sn = @sn
 
 		IF @@ROWCOUNT = 0
@@ -233,6 +328,58 @@ EXEC sp_addpublication_snapshot
 	' + @SQL_synob  + '
 '
 
-PRINT (@SQL)
+--Create Subscription Script
+SET @SQL_sub = N'
+--Run to Publication
+USE [' + @db_name + ']
+EXEC sp_addsubscription
+	@publication = N''' + @pub_name + ''',
+	@subscriber = N''' + @Rep_sub + ''',
+	@destination_db = N''' + @db_name + ''',
+	@sync_type = N''Automatic'',
+	@subscription_type = N''pull'',
+	@update_mode = N''read only''
 
-EXEC(@SQL)
+--Run to Subscription
+EXEC sp_addpullsubscription
+	@publisher = N''' + @@SERVERNAME + ''',
+	@publication = N''' + @pub_name + ''',
+	@publisher_db = N''' + @db_name + ''',
+	@independent_agent = N''True'',
+	@subscription_type = N''pull'',
+	@description = N'''',
+	@update_mode = N''read only'',
+	@immediate_sync = 1
+
+EXEC sp_addpullsubscription_agent
+	@publisher = N''' + @@SERVERNAME + ''',
+	@publisher_db = N''' + @db_name + ''',
+	@publication = N''' + @pub_name + ''',
+	@distributor = N''' + @@SERVERNAME + ''',
+	@distributor_security_mode = 1,
+	@distributor_login = N'''',
+	@distributor_password = null,
+	@enabled_for_syncmgr = N''False'',
+	@frequency_type = 64,
+	@frequency_interval = 0,
+	@frequency_relative_interval = 0,
+	@frequency_recurrence_factor = 0,
+	@frequency_subday = 0,
+	@frequency_subday_interval = 0,
+	@active_start_time_of_day = 0,
+	@active_end_time_of_day = 235959,
+	@active_start_date = 20230626,
+	@active_end_date = 99991231,
+	@alt_snapshot_folder = N'''',
+	@working_directory = N'''',
+	@use_ftp = N''False'',
+	@job_login = null,
+	@job_password = null,
+	@publication_type = 0
+'
+
+SELECT
+	@SQL_dis1	AS Distribution1,
+	@SQL_dis2	AS Distribution2,
+	@SQL		AS Publication,
+	@SQL_sub	AS Subscription
