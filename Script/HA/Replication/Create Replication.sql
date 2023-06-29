@@ -43,6 +43,16 @@ DECLARE-------------------------------------------------------------------------
 	@fname		VARCHAR(30) = '',
 	@sn			INT = 1
 
+EXEC sp_configure 'show advanced options',1;
+RECONFIGURE;
+
+EXEC sp_configure 'xp_cmdshell',1;
+RECONFIGURE;
+
+EXEC sp_configure 'show advanced options',0;
+RECONFIGURE;
+
+DROP TABLE IF EXISTS #TB_or_proc;
 CREATE TABLE #TB_or_proc
 (
 	sn INT IDENTITY(1,1),
@@ -58,15 +68,6 @@ FROM #TB_or_proc
 WHERE sn = 1
 
 SET @SQL_dis1 = N'
-EXEC sp_configure ''show advanced options'',1;
-RECONFIGURE;
-
-EXEC sp_configure ''xp_cmdshell'',1;
-RECONFIGURE;
-
-EXEC sp_configure ''show advanced options'',0;
-RECONFIGURE;
-
 --移除現有的share folder
 EXEC xp_cmdshell ''rmdir "' + @share_folder_path + '"''
 
@@ -88,8 +89,8 @@ EXEC sp_adddistributiondb
 	@history_retention = 48,
 	@deletebatchsize_xact = 5000,
 	@deletebatchsize_cmd = 2000,
-	@security_mode = 1'
-
+	@security_mode = 1
+'
 SET @SQL_dis2 = N'
 USE [distribution]
 IF NOT EXISTS (SELECT * FROM sysobjects WHERE NAME = ''UIProperties'' AND TYPE = ''U'')
@@ -379,7 +380,6 @@ EXEC sp_addpullsubscription_agent
 '
 
 SELECT
-	@SQL_dis1	AS Distribution1,
-	@SQL_dis2	AS Distribution2,
-	@SQL		AS Publication,
-	@SQL_sub	AS Subscription
+	@SQL_dis1 + 'GO' + @SQL_dis2	AS Distribution1,
+	@SQL							AS Publication,
+	@SQL_sub						AS Subscription
