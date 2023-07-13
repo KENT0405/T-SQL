@@ -307,8 +307,9 @@ BEGIN
 	END --IF
 
 	SELECT @view_name = [name]
-	FROM sys.all_views
-	WHERE [name] LIKE '%SYNC_' + @TBname + '%'
+	FROM sys.views
+	WHERE [name] LIKE '%' + @TBname + '%'
+	AND is_ms_shipped = 1
 
 	IF(@@ROWCOUNT <> 0)
 	BEGIN
