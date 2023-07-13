@@ -14,12 +14,16 @@ DECLARE
 	@articles_del_cmd		VARCHAR(100) = '',
 	@articles_ins_cmd		VARCHAR(100) = '',
 	@articles_upd_cmd		VARCHAR(100) = '',
+	@partition_columns		VARCHAR(100) = '',
+	@view_name				VARCHAR(100) = '',
 	@filter_clause			VARCHAR(100) = '',
 	@filter					INT,
+	@artid					INT,
 	@sn						INT = 1,
 	@id						INT = 1,
 	@pubid					INT = 1,
-	@article_id				INT = 1
+	@article_id				INT = 1,
+	@rank					INT = 1		--partition columns
 
 DROP TABLE IF EXISTS #DBtemp, #TBpub;
 
@@ -65,7 +69,7 @@ BEGIN
 	IF (@@ROWCOUNT = 0)
 		BREAK;
 
-	DROP TABLE IF EXISTS ##syspublications, ##sysarticles;
+	DROP TABLE IF EXISTS ##syspublications, ##sysarticles, ##_sysarticles,##sysarticlecolumns;
 
 	--將資料insert進全域表，方便整理使用
 	EXEC ('SELECT * INTO ##syspublications FROM '+ @DBname +'.dbo.syspublications')
@@ -80,8 +84,9 @@ BEGIN
 
 	INSERT INTO ##sysarticles
 	SELECT [creation_script],NULL,[description],[dest_object],NULL,NULL,NULL,[name],[objid],[pubid],[pre_creation_cmd],[status],NULL,[type],NULL,[schema_option],[dest_owner]
-	FROM '+ @DBname +'.dbo.sysschemaarticles'
-	)
+	FROM '+ @DBname +'.dbo.sysschemaarticles')
+	EXEC('SELECT * INTO ##_sysarticles FROM '+ @DBname +'.dbo.sysarticles')
+	EXEC('SELECT * INTO ##sysarticlecolumns FROM '+ @DBname +'.dbo.sysarticlecolumns')
 
 	--DB -> TB Level
 	WHILE(1 = 1)
@@ -225,25 +230,112 @@ BEGIN
 		+ CASE WHEN @filter_clause IS NULL THEN '' ELSE '@identityrangemanagementoption = N''manual'',' END + '
 		@destination_table = N''' + @TBname + ''',
 		@destination_owner = N''' + @articles_source_owner + ''',
-		@status = ' + CASE WHEN (SELECT [status] FROM #articles WHERE ID = @article_id) = 17 THEN '16' ELSE '24,' END +
-		+ CASE WHEN @filter IS NULL THEN '' ELSE '@vertical_partition = N''false'',' END +
-		+ CASE WHEN @articles_ins_cmd IS NULL THEN '' ELSE '@ins_cmd = N''' + @articles_ins_cmd + ''',' END +
-		+ CASE WHEN @articles_del_cmd IS NULL THEN '' ELSE '@del_cmd = N''' + @articles_del_cmd + ''',' END +
-		+ CASE WHEN @articles_upd_cmd IS NULL THEN '' ELSE '@upd_cmd = N''' + @articles_upd_cmd + '''' END +
-		+ CASE WHEN @filter_clause IS NULL THEN '' ELSE ',@filter_clause = N''' + @filter_clause + '''' END + '
+		@status = ' + CASE WHEN (SELECT [status] FROM #articles WHERE ID = @article_id) = 17 THEN '16' ELSE '24,' END + '
+		'+ CASE WHEN @filter IS NULL THEN '' ELSE '@vertical_partition = N''true'',' END + '
+		'+ CASE WHEN @articles_ins_cmd IS NULL THEN '' ELSE '@ins_cmd = N''' + @articles_ins_cmd + ''',' END + '
+		'+ CASE WHEN @articles_del_cmd IS NULL THEN '' ELSE '@del_cmd = N''' + @articles_del_cmd + ''',' END + '
+		'+ CASE WHEN @articles_upd_cmd IS NULL THEN '' ELSE '@upd_cmd = N''' + @articles_upd_cmd + '''' END + '
+		'+ CASE WHEN @filter_clause IS NULL THEN '' ELSE ',@filter_clause = N''' + @filter_clause + '''' END + '
 	GO
-
-	sp_articlefilter
-
-	sp_articleview
 	'
-	SET @article_id += 1
+
+	SELECT @artid = CTE.artid
+	FROM
+	(
+		SELECT artid,COUNT(colid) AS count
+		FROM ##sysarticlecolumns
+		GROUP BY artid
+	) AS CTE
+	JOIN ##_sysarticles AS art
+	ON CTE.artid = art.artid
+	JOIN
+	(
+		SELECT obj.name,COUNT(col.name) AS count
+		FROM sys.all_columns AS col
+		JOIN sys.all_objects AS obj
+		ON col.object_id = obj.object_id
+		WHERE type = 'U'
+		GROUP BY obj.name
+	)AS cnt
+	ON art.dest_table = cnt.name
+	WHERE CTE.count <> cnt.count
+	AND art.dest_table = @TBname
+
+	IF (@@ROWCOUNT <> 0) --確認table是否有配對到
+	BEGIN
+
+	DROP TABLE IF EXISTS #partition_columns;
+
+	;WITH CTE1 --找出partition columns
+	AS
+	(
+		SELECT ROW_NUMBER() OVER(ORDER BY obj.name) AS ID, col.name
+		FROM sys.objects AS obj
+		JOIN sys.all_columns AS col
+		ON obj.object_id = col.object_id
+		WHERE obj.name = @TBname
+	)
+	SELECT ROW_NUMBER() OVER(ORDER BY scol.colid) AS [rank], CTE1.name
+	INTO #partition_columns
+	FROM [idc_data].[dbo].[sysarticlecolumns] AS scol JOIN CTE1
+	ON scol.colid = CTE1.ID
+	WHERE scol.artid = @artid
+
+	WHILE(1 = 1)
+	BEGIN
+
+	SELECT @partition_columns = [name]
+	FROM #partition_columns
+	WHERE [rank] = @rank
+
+	IF @@ROWCOUNT = 0
+	BEGIN
+		SET @SQL_articles += '
+	GO'
+		BREAK;
+	END
+
+	SET @SQL_articles +=
+	CASE WHEN @rank = 1 THEN '
+	-- Adding the article''s partition column(s)' ELSE '' END + '
+	EXEC sp_articlecolumn @publication = N''' + @TBname + ''', @article = N''' + @TBname + ''', @column = N''' + @partition_columns + ''', @operation = N''add'', @force_invalidate_snapshot = 1, @force_reinit_subscription = 1'
+
+	SET @rank += 1
+
+	END --WHILE
+
+	END --IF
+
+	SELECT @view_name = [name]
+	FROM sys.all_views
+	WHERE [name] LIKE '%SYNC_' + @TBname + '%'
+
+	IF(@@ROWCOUNT <> 0)
+	BEGIN
+
+	SET @SQL_articles += '
+
+	-- Adding the article synchronization object
+	EXEC sp_articleview
+		@publication = N''' + @pubname + ''',
+		@article = N''' + @TBname + ''',
+		@view_name = N''' + @view_name + ''',
+		@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
+		@force_invalidate_snapshot = 1,
+		@force_reinit_subscription = 1
+	GO
+	'
 
 	END
+
+	SET @article_id += 1
+
+	END	--WHILE
 
 	INSERT INTO #TBpub VALUES('/*',@DBname,@TBname,'*/',@SQL_publication,@SQL_snapshot,@SQL_user_login,@SQL_articles)
 
 	SET @pubid += 1
+	SET @rank = 1
 	SET @id = 1
 	SET @article_id = 1
 	SET @SQL_user_login = ''
