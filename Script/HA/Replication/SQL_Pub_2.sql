@@ -239,6 +239,7 @@ BEGIN
 	GO
 	'
 
+	--查出partition columns的Table有哪些
 	SELECT @artid = CTE.artid
 	FROM
 	(
