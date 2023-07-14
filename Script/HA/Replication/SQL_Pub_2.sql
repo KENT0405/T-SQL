@@ -3,6 +3,7 @@ DECLARE
 	@SQL_snapshot			NVARCHAR(MAX) = '',
 	@SQL_user_login			NVARCHAR(MAX) = '',
 	@SQL_articles			NVARCHAR(MAX) = '',
+	@SQL_subscriptions		NVARCHAR(MAX) = '',
 	@DBname					VARCHAR(100) = '-',
 	@TBname					VARCHAR(100) = '',
 	@pubname				VARCHAR(100) = '',
@@ -15,7 +16,10 @@ DECLARE
 	@articles_ins_cmd		VARCHAR(100) = '',
 	@articles_upd_cmd		VARCHAR(100) = '',
 	@partition_columns		VARCHAR(100) = '',
+	@sub_server				VARCHAR(100) = '',
+	@sub_destdb				VARCHAR(100) = '',
 	@view_name				VARCHAR(100) = '',
+	@filter_proc			VARCHAR(100) = '',
 	@filter_clause			VARCHAR(100) = '',
 	@filter					INT,
 	@artid					INT,
@@ -36,7 +40,8 @@ CREATE TABLE #TBpub
 	Addpublication				NVARCHAR(MAX),
 	Addpublication_snapshot		NVARCHAR(MAX),
 	Adduser						NVARCHAR(MAX),
-	Addarticles					NVARCHAR(MAX)
+	Addarticles					NVARCHAR(MAX),
+	Addsubscriptions			NVARCHAR(MAX)
 )
 
 CREATE TABLE #DBtemp
@@ -69,22 +74,28 @@ BEGIN
 	IF (@@ROWCOUNT = 0)
 		BREAK;
 
-	DROP TABLE IF EXISTS ##syspublications, ##sysarticles, ##_sysarticles,##sysarticlecolumns;
+	DROP TABLE IF EXISTS ##syspublications, ##sysarticles, ##_sysarticles, ##sysarticlecolumns;
 
 	--將資料insert進全域表，方便整理使用
 	EXEC ('SELECT * INTO ##syspublications FROM '+ @DBname +'.dbo.syspublications')
 	EXEC ('
-	SELECT [creation_script],[del_cmd],[description],[dest_table],[filter],[filter_clause],[ins_cmd],[name],[objid],[pubid],[pre_creation_cmd],[status],[sync_objid],[type],[upd_cmd],[schema_option],[dest_owner]
+	SELECT [creation_script],[del_cmd],[description],[dest_table],[filter],[filter_clause],[ins_cmd],[name],[objid],[pubid],[pre_creation_cmd],art.[status],[sync_objid],[type],[upd_cmd],[schema_option],[dest_owner],[dest_db],[sync_type],[subscription_type],[update_mode],[srvname]
 	INTO ##sysarticles
-	FROM '+ @DBname +'.dbo.sysarticles
+	FROM '+ @DBname +'.dbo.sysarticles AS art
+	JOIN '+ @DBname +'.dbo.syssubscriptions AS sub
+	ON art.artid = sub.artid
+	WHERE sub.srvid = 2
 
 	ALTER TABLE ##sysarticles ALTER COLUMN filter INT NULL
 	ALTER TABLE ##sysarticles ALTER COLUMN pre_creation_cmd TINYINT NULL
 	ALTER TABLE ##sysarticles ALTER COLUMN sync_objid INT NULL
 
 	INSERT INTO ##sysarticles
-	SELECT [creation_script],NULL,[description],[dest_object],NULL,NULL,NULL,[name],[objid],[pubid],[pre_creation_cmd],[status],NULL,[type],NULL,[schema_option],[dest_owner]
-	FROM '+ @DBname +'.dbo.sysschemaarticles')
+	SELECT [creation_script],NULL,[description],[dest_object],NULL,NULL,NULL,[name],[objid],[pubid],[pre_creation_cmd],sch.[status],NULL,[type],NULL,[schema_option],[dest_owner],[dest_db],[sync_type],[subscription_type],[update_mode],[srvname]
+	FROM '+ @DBname +'.dbo.sysschemaarticles AS sch
+	JOIN '+ @DBname +'.dbo.syssubscriptions AS sub
+	ON sch.artid = sub.artid
+	WHERE sub.srvid = 2')
 	EXEC('SELECT * INTO ##_sysarticles FROM '+ @DBname +'.dbo.sysarticles')
 	EXEC('SELECT * INTO ##sysarticlecolumns FROM '+ @DBname +'.dbo.sysarticlecolumns')
 
@@ -292,14 +303,21 @@ BEGIN
 	IF @@ROWCOUNT = 0
 	BEGIN
 		SET @SQL_articles += '
-	GO'
+	GO
+	'
 		BREAK;
 	END
 
 	SET @SQL_articles +=
 	CASE WHEN @rank = 1 THEN '
 	-- Adding the article''s partition column(s)' ELSE '' END + '
-	EXEC sp_articlecolumn @publication = N''' + @TBname + ''', @article = N''' + @TBname + ''', @column = N''' + @partition_columns + ''', @operation = N''add'', @force_invalidate_snapshot = 1, @force_reinit_subscription = 1'
+	EXEC sp_articlecolumn
+		@publication = N''' + @TBname + ''',
+		@article = N''' + @TBname + ''',
+		@column = N''' + @partition_columns + ''',
+		@operation = N''add'',
+		@force_invalidate_snapshot = 1,
+		@force_reinit_subscription = 1'
 
 	SET @rank += 1
 
@@ -307,16 +325,44 @@ BEGIN
 
 	END --IF
 
-	SELECT @view_name = [name]
-	FROM sys.views
-	WHERE [name] LIKE '%' + @TBname + '%'
-	AND is_ms_shipped = 1
+	--只要有filter就會有這個 Articles
+	IF(@filter_clause <> '')
+	BEGIN
+
+	SELECT @filter_proc = OBJECT_NAME(referencing_id)
+	FROM sys.sql_expression_dependencies AS sed
+	INNER JOIN sys.objects AS o ON sed.referencing_id = o.object_id
+	WHERE o.type_desc = 'REPLICATION_FILTER_PROCEDURE'
+	AND referenced_entity_name = @TBname
+
+	SET @SQL_articles += '
+	-- Adding the article filter
+	EXEC sp_articlefilter
+		@publication = N''' + @pubname + ''',
+		@article = N''' + @TBname + ''',
+		@filter_name = N''' + @filter_proc + ''',
+		@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
+		@force_invalidate_snapshot = 1,
+		@force_reinit_subscription = 1
+	GO'
+
+	END
+
+	--只要有partition或是filter就會有這個 Articles
+	IF(@partition_columns <> '' OR @filter_clause <> '')
+	BEGIN
+
+	SELECT @view_name = OBJECT_NAME(referencing_id)
+	FROM sys.sql_expression_dependencies AS sed
+	INNER JOIN sys.objects AS o ON sed.referencing_id = o.object_id
+	WHERE OBJECT_NAME(referencing_id) LIKE 'SYNC%'
+	AND o.type_desc = 'VIEW'
+	AND referenced_entity_name = @TBname
 
 	IF(@@ROWCOUNT <> 0)
 	BEGIN
 
 	SET @SQL_articles += '
-
 	-- Adding the article synchronization object
 	EXEC sp_articleview
 		@publication = N''' + @pubname + ''',
@@ -330,11 +376,33 @@ BEGIN
 
 	END
 
+	SELECT
+		@sub_server = srvname,
+		@sub_destdb = dest_db
+	FROM ##sysarticles
+	WHERE dest_table = @TBname
+
+	SET @SQL_subscriptions = '
+	-- Adding the transactional subscriptions
+	EXEC sp_addsubscription
+		@publication = N''' + @pubname + ''',
+		@subscriber = N''' + @sub_server + ''',
+		@destination_db = N''' + @sub_destdb + ''',
+		@subscription_type = N''' + CASE WHEN (SELECT subscription_type FROM ##sysarticles WHERE dest_table = @TBname) = 1 THEN 'PULL' ELSE 'PUSH' END + ''',
+		@sync_type = N''' + CASE WHEN (SELECT sync_type FROM ##sysarticles WHERE dest_table = @TBname) = 1 THEN 'Automatic' ELSE 'None' END + ''',
+		@article = N''all'',
+		@update_mode = N''' + CASE WHEN (SELECT update_mode FROM ##sysarticles WHERE dest_table = @TBname) = 0 THEN 'read only' ELSE 'immediate-updating' END + ''',
+		@subscriber_type = 0
+	GO
+	'
+
+	END
+
 	SET @article_id += 1
 
 	END	--WHILE
 
-	INSERT INTO #TBpub VALUES('/*',@DBname,@TBname,'*/',@SQL_publication,@SQL_snapshot,@SQL_user_login,@SQL_articles)
+	INSERT INTO #TBpub VALUES('/*',@DBname,@TBname,'*/',@SQL_publication,@SQL_snapshot,@SQL_user_login,@SQL_articles,@SQL_subscriptions)
 
 	SET @pubid += 1
 	SET @rank = 1
