@@ -3,6 +3,7 @@ DECLARE
 	@SQL_snapshot			NVARCHAR(MAX) = '',
 	@SQL_user_login			NVARCHAR(MAX) = '',
 	@SQL_articles			NVARCHAR(MAX) = '',
+	@SQL_partition_columns	NVARCHAR(MAX) = '',
 	@SQL_subscriptions		NVARCHAR(MAX) = '',
 	@DBname					VARCHAR(100) = '-',
 	@TBname					VARCHAR(100) = '',
@@ -41,6 +42,7 @@ CREATE TABLE #TBpub
 	Addpublication_snapshot		NVARCHAR(MAX),
 	Adduser						NVARCHAR(MAX),
 	Addarticles					NVARCHAR(MAX),
+	Addpartition_columns		NVARCHAR(MAX),
 	Addsubscriptions			NVARCHAR(MAX)
 )
 
@@ -405,16 +407,22 @@ BEGIN
 	INSERT INTO #TBpub VALUES('/*',@DBname,@TBname,'*/',@SQL_publication,@SQL_snapshot,@SQL_user_login,@SQL_articles,@SQL_subscriptions)
 
 	SET @pubid += 1
+
+
 	SET @rank = 1
 	SET @id = 1
 	SET @article_id = 1
+	SET @filter_clause = ''
+	SET @partition_columns = ''
 	SET @SQL_user_login = ''
 	SET @SQL_articles = ''
 
 	END
 
-	SET @pubid = 1
 	SET @sn += 1
+
+	--return
+	SET @pubid = 1
 END
 
 SELECT * FROM #TBpub
