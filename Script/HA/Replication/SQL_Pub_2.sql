@@ -42,7 +42,6 @@ CREATE TABLE #TBpub
 	Addpublication_snapshot		NVARCHAR(MAX),
 	Adduser						NVARCHAR(MAX),
 	Addarticles					NVARCHAR(MAX),
-	Addpartition_columns		NVARCHAR(MAX),
 	Addsubscriptions			NVARCHAR(MAX)
 )
 
@@ -226,32 +225,6 @@ BEGIN
 	IF @@ROWCOUNT = 0
 		BREAK;
 
-	SET @SQL_articles +=
-	CASE WHEN @article_id = 1 THEN '
-
-	-- Adding the transactional articles' ELSE '' END + N'
-	EXEC sp_addarticle
-		@publication = N''' + @pubname + ''',
-		@article = N''' + @TBname + ''',
-		@source_owner = N''' + @articles_source_owner + ''',
-		@source_object = N''' + @TBname + ''',
-		@type = N''' + CASE WHEN (SELECT [type] FROM #articles WHERE ID = @article_id) = 1 THEN 'logbased' ELSE 'proc schema only' END + ''',
-		@description = N''' + @articles_description + ''',
-		@creation_script = N''' + @articles_craete_script + ''',
-		@pre_creation_cmd = N'''+ CASE (SELECT pre_creation_cmd FROM #articles WHERE ID = @article_id) WHEN 0 THEN 'NONE' WHEN 1 THEN 'DROP' WHEN 2 THEN 'DELETE' ELSE 'TRUNCATE' END + ''',
-		@schema_option = ' + CONVERT(VARCHAR(50),@articles_schema_option,1)+ ','
-		+ CASE WHEN @filter_clause IS NULL THEN '' ELSE '@identityrangemanagementoption = N''manual'',' END + '
-		@destination_table = N''' + @TBname + ''',
-		@destination_owner = N''' + @articles_source_owner + ''',
-		@status = ' + CASE WHEN (SELECT [status] FROM #articles WHERE ID = @article_id) = 17 THEN '16' ELSE '24,' END + '
-		'+ CASE WHEN @filter IS NULL THEN '' ELSE '@vertical_partition = N''true'',' END + '
-		'+ CASE WHEN @articles_ins_cmd IS NULL THEN '' ELSE '@ins_cmd = N''' + @articles_ins_cmd + ''',' END + '
-		'+ CASE WHEN @articles_del_cmd IS NULL THEN '' ELSE '@del_cmd = N''' + @articles_del_cmd + ''',' END + '
-		'+ CASE WHEN @articles_upd_cmd IS NULL THEN '' ELSE '@upd_cmd = N''' + @articles_upd_cmd + '''' END + '
-		'+ CASE WHEN @filter_clause IS NULL THEN '' ELSE ',@filter_clause = N''' + @filter_clause + '''' END + '
-	GO
-	'
-
 	--查出partition columns的Table有哪些
 	SELECT @artid = CTE.artid
 	FROM
@@ -304,13 +277,13 @@ BEGIN
 
 	IF @@ROWCOUNT = 0
 	BEGIN
-		SET @SQL_articles += '
+		SET @SQL_partition_columns += '
 	GO
 	'
 		BREAK;
 	END
 
-	SET @SQL_articles +=
+	SET @SQL_partition_columns +=
 	CASE WHEN @rank = 1 THEN '
 	-- Adding the article''s partition column(s)' ELSE '' END + '
 	EXEC sp_articlecolumn
@@ -326,6 +299,39 @@ BEGIN
 	END --WHILE
 
 	END --IF
+
+	SET @SQL_articles +=
+	CASE WHEN @article_id = 1 THEN '
+
+	-- Adding the transactional articles' ELSE '' END + N'
+	EXEC sp_addarticle
+		@publication = N''' + @pubname + ''',
+		@article = N''' + @TBname + ''',
+		@source_owner = N''' + @articles_source_owner + ''',
+		@source_object = N''' + @TBname + ''',
+		@type = N''' + CASE WHEN (SELECT [type] FROM #articles WHERE ID = @article_id) = 1 THEN 'logbased' ELSE 'proc schema only' END + ''',
+		@description = N''' + @articles_description + ''',
+		@creation_script = N''' + @articles_craete_script + ''',
+		@pre_creation_cmd = N'''+ CASE (SELECT pre_creation_cmd FROM #articles WHERE ID = @article_id) WHEN 0 THEN 'NONE' WHEN 1 THEN 'DROP' WHEN 2 THEN 'DELETE' ELSE 'TRUNCATE' END + ''',
+		@schema_option = ' + CONVERT(VARCHAR(50),@articles_schema_option,1)+ ','
+		+ CASE WHEN @articles_ins_cmd IS NULL THEN '' ELSE '
+		@identityrangemanagementoption = N''manual'',' END + '
+		@destination_table = N''' + @TBname + ''',
+		@destination_owner = N''' + @articles_source_owner + ''',
+		@status = ' + CASE WHEN (SELECT [status] FROM #articles WHERE ID = @article_id) = 17 THEN '16' ELSE '24,' END +
+		+ CASE WHEN @SQL_partition_columns = '' THEN CASE WHEN @articles_ins_cmd IS NULL THEN '' ELSE '
+		@vertical_partition = N''false'',' END ELSE '
+		@vertical_partition = N''true'',' END +
+		+ CASE WHEN @articles_ins_cmd IS NULL THEN '' ELSE '
+		@ins_cmd = N''' + @articles_ins_cmd + ''',' END +
+		+ CASE WHEN @articles_del_cmd IS NULL THEN '' ELSE '
+		@del_cmd = N''' + @articles_del_cmd + ''',' END +
+		+ CASE WHEN @articles_upd_cmd IS NULL THEN '' ELSE '
+		@upd_cmd = N''' + @articles_upd_cmd + '''' END +
+		+ CASE WHEN @filter_clause IS NULL THEN '' ELSE '
+		,@filter_clause = N''' + @filter_clause + '''' END + '
+	GO
+	' + @SQL_partition_columns
 
 	--只要有filter就會有這個 Articles
 	IF(@filter_clause <> '')
@@ -378,6 +384,9 @@ BEGIN
 
 	END
 
+	END
+
+	--Adding the transactional subscriptions
 	SELECT
 		@sub_server = srvname,
 		@sub_destdb = dest_db
@@ -398,8 +407,6 @@ BEGIN
 	GO
 	'
 
-	END
-
 	SET @article_id += 1
 
 	END	--WHILE
@@ -408,7 +415,7 @@ BEGIN
 
 	SET @pubid += 1
 
-
+	--return
 	SET @rank = 1
 	SET @id = 1
 	SET @article_id = 1
@@ -416,6 +423,8 @@ BEGIN
 	SET @partition_columns = ''
 	SET @SQL_user_login = ''
 	SET @SQL_articles = ''
+	SET @SQL_subscriptions = ''
+	SET @SQL_partition_columns = ''
 
 	END
 
