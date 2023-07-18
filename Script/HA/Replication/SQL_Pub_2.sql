@@ -100,7 +100,7 @@ BEGIN
 		FROM ##syspublications
 		WHERE pubid = @pubid
 
-		IF (@@ROWCOUNT = 0)
+		IF (@@ROWCOUNT = 0 AND (SELECT MAX(pubid) FROM ##syspublications) <= @pubid)
 			BREAK;
 
 		SET @SQL_publication = N'
@@ -265,21 +265,21 @@ BEGIN
 					IF @@ROWCOUNT = 0
 					BEGIN
 						SET @SQL_partition_columns += '
-					GO
+				GO
 					'
 						BREAK;
 					END
 
 					SET @SQL_partition_columns +=
 					CASE WHEN @rank = 1 THEN '
-					-- Adding the article''s partition column(s)' ELSE '' END + '
-					EXEC sp_articlecolumn
-						@publication = N''' + @TBname + ''',
-						@article = N''' + @TBname + ''',
-						@column = N''' + @partition_columns + ''',
-						@operation = N''add'',
-						@force_invalidate_snapshot = 1,
-						@force_reinit_subscription = 1'
+				-- Adding the article''s partition column(s)' ELSE '' END + '
+				EXEC sp_articlecolumn
+					@publication = N''' + @TBname + ''',
+					@article = N''' + @TBname + ''',
+					@column = N''' + @partition_columns + ''',
+					@operation = N''add'',
+					@force_invalidate_snapshot = 1,
+					@force_reinit_subscription = 1'
 
 					SET @rank += 1
 				END --WHILE
@@ -295,8 +295,8 @@ BEGIN
 				@source_owner = N''' + @articles_source_owner + ''',
 				@source_object = N''' + @TBname + ''',
 				@type = N''' + CASE WHEN (SELECT [type] FROM #articles WHERE ID = @article_id) = 1 THEN 'logbased' ELSE 'proc schema only' END + ''',
-				@description = N''' + @articles_description + ''',
-				@creation_script = N''' + @articles_craete_script + ''',
+				@description = N''' + CASE WHEN @articles_description IS NULL THEN '' ELSE @articles_description END + ''',
+				@creation_script = N''' + CASE WHEN  @articles_craete_script IS NULL THEN '' ELSE @articles_craete_script END + ''',
 				@pre_creation_cmd = N'''+ CASE (SELECT pre_creation_cmd FROM #articles WHERE ID = @article_id) WHEN 0 THEN 'NONE' WHEN 1 THEN 'DROP' WHEN 2 THEN 'DELETE' ELSE 'TRUNCATE' END + ''',
 				@schema_option = ' + CONVERT(VARCHAR(50),@articles_schema_option,1)+ ','
 				+ CASE WHEN @articles_ins_cmd IS NULL THEN '' ELSE '
@@ -353,16 +353,16 @@ BEGIN
 				BEGIN
 
 					SET @SQL_articles += '
-					-- Adding the article synchronization object
-					EXEC sp_articleview
-						@publication = N''' + @pubname + ''',
-						@article = N''' + @TBname + ''',
-						@view_name = N''' + @view_name + ''',
-						@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
-						@force_invalidate_snapshot = 1,
-						@force_reinit_subscription = 1
-					GO
-					'
+				-- Adding the article synchronization object
+				EXEC sp_articleview
+					@publication = N''' + @pubname + ''',
+					@article = N''' + @TBname + ''',
+					@view_name = N''' + @view_name + ''',
+					@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
+					@force_invalidate_snapshot = 1,
+					@force_reinit_subscription = 1
+				GO
+				'
 				END
 			END
 
@@ -390,7 +390,10 @@ BEGIN
 			SET @article_id += 1
 		END	--WHILE
 
-		INSERT INTO #TBpub VALUES('/*',@DBname,@TBname,'*/',@SQL_publication,@SQL_snapshot,@SQL_user_login,@SQL_articles,@SQL_subscriptions)
+		IF((SELECT [name] FROM ##syspublications WHERE pubid = @pubid) <> '')
+		BEGIN
+			INSERT INTO #TBpub VALUES('/*',@DBname,@pubname,'*/',@SQL_publication,@SQL_snapshot,@SQL_user_login,@SQL_articles,@SQL_subscriptions)
+		END
 
 		SET @pubid += 1
 
