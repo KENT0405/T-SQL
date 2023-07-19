@@ -1,13 +1,13 @@
 DECLARE
+	@SQL_distribution		NVARCHAR(MAX) = '',
 	@SQL_publication		NVARCHAR(MAX) = '',
 	@SQL_user_login			NVARCHAR(MAX) = '',
 	@SQL_articles			NVARCHAR(MAX) = '',
 	@SQL_partition_columns	NVARCHAR(MAX) = '',
 	@SQL_subscriptions		NVARCHAR(MAX) = '',
-	@DBname					VARCHAR(100) = '-',
+	@DBname					VARCHAR(100) = '',
 	@TBname					VARCHAR(100) = '',
 	@pubname				VARCHAR(100) = '',
-	@user_sysadmin			VARCHAR(100) = '',
 	@articles_source_owner	VARCHAR(20) = '',
 	@articles_description	VARCHAR(MAX) = '',
 	@articles_craete_script	VARCHAR(MAX) = '',
@@ -19,7 +19,6 @@ DECLARE
 	@sub_server				VARCHAR(100) = '',
 	@sub_destdb				VARCHAR(100) = '',
 	@view_name				VARCHAR(100) = '',
-	@filter_proc			VARCHAR(100) = '',
 	@filter_clause			VARCHAR(100) = '',
 	@filter					INT,
 	@artid					INT,
@@ -29,17 +28,46 @@ DECLARE
 	@article_id				INT = 1,
 	@rank					INT = 1		--partition columns
 
+SELECT @SQL_distribution = '
+	/****** Begin: Script to be run at Publisher ******/
+
+	-- Adding Distributor
+	USE [master]
+	exec sp_adddistributor @distributor = N''' + data_source + ''', @password = N''''
+	exec sp_addsubscriber @subscriber = N''' + data_source + ''', @type = 0, @description = N''''
+	GO
+
+	/****** End: Script to be run at Publisher ******/
+
+	/****** Begin: Script to be run at Distributor ******/
+
+	-- Adding the agent profiles
+	-- Updating the agent profile defaults
+	exec sp_MSupdate_agenttype_default @profile_id = 1
+	exec sp_MSupdate_agenttype_default @profile_id = 2
+	exec sp_MSupdate_agenttype_default @profile_id = 4
+	exec sp_MSupdate_agenttype_default @profile_id = 6
+	exec sp_MSupdate_agenttype_default @profile_id = 11
+	GO
+
+	/****** End: Script to be run at Distributor ******/
+'
+FROM sys.servers
+WHERE is_distributor = 1
+
 DROP TABLE IF EXISTS #DBtemp, #TBpub;
 
----------------------------------result_table--------------------------------------------
+---------------------------------Pub_result_table----------------------------------------
 CREATE TABLE #TBpub
 (
-	lI							VARCHAR(2),
-	DBname						VARCHAR(100),
-	PubName						VARCHAR(100),
-	ll							VARCHAR(2),
-	Addpublication				NVARCHAR(MAX),
-	Addarticles					NVARCHAR(MAX)
+	lI					VARCHAR(2),
+	DBname				VARCHAR(100),
+	PubName				VARCHAR(100),
+	ll					VARCHAR(2),
+	Add_publication		NVARCHAR(MAX),
+	Add_user_login		NVARCHAR(MAX),
+	Add_articles		NVARCHAR(MAX),
+	Add_subscriptions	NVARCHAR(MAX)
 )
 ------------------------------------------------------------------------------------------
 --將所有DB放進暫存表裡
@@ -50,6 +78,34 @@ INTO #DBtemp
 FROM sys.databases
 WHERE is_published = 1
 
+WHILE(1 = 1)
+BEGIN
+	SELECT @DBname = DBname
+	FROM #DBtemp
+	WHERE sn = @sn
+
+	IF (@@ROWCOUNT = 0)
+	BEGIN
+		SET @SQL_distribution += '
+	/****** End: Script to be run at Publisher ******/'
+		BREAK;
+	END
+
+	SET @SQL_distribution +=
+	CASE @sn WHEN 1 THEN '
+	/****** Begin: Script to be run at Publisher ******/
+	' ELSE '' END + '
+	-- Enabling the replication database "' + @DBname + '"
+	USE [master]
+	exec sp_replicationdboption @dbname = N''' + @DBname + ''', @optname = N''publish'', @value = N''true''
+	exec [' + @DBname + '].sys.sp_addlogreader_agent @job_login = null, @job_password = null, @publisher_security_mode = 1
+	exec [' + @DBname + '].sys.sp_addqreader_agent @job_login = null, @job_password = null, @frompublisher = 1
+	GO
+	'
+
+	SET @sn += 1
+END
+SET @sn = 1
 ------------------------------------------------------------------------------------------
 --DB Level
 WHILE(1 = 1)
@@ -157,25 +213,21 @@ BEGIN
 			;WITH CTE
 			AS
 			(
-				SELECT
-					ROW_NUMBER() OVER (ORDER BY [name]) AS ID,
-					[name]
+				SELECT ROW_NUMBER() OVER (ORDER BY [name]) AS ID,[name]
 				FROM sys.syslogins
 				WHERE sysadmin = 1
 			)
-			SELECT @user_sysadmin = [name]
+			SELECT @SQL_user_login +=
+			CASE WHEN @id = 1 THEN '
+			-- Adding User' ELSE '' END + N'
+			EXEC sp_grant_publication_access @publication = N''' + @pubname + ''', @login = N''' + [name] + ''''
+			+ CASE WHEN (SELECT COUNT(1) FROM sys.syslogins WHERE sysadmin = 1) = @id THEN '
+			GO' ELSE '' END + ''
 			FROM CTE
 			WHERE ID = @id
 
-			IF (@@ROWCOUNT = 0)
+			IF (SELECT COUNT(*) FROM sys.syslogins WHERE sysadmin = 1) <= @id
 				BREAK;
-
-			SET @SQL_user_login +=
-			CASE WHEN @id = 1 THEN '
-			-- Adding User' ELSE '' END + N'
-			EXEC sp_grant_publication_access @publication = N''' + @pubname + ''', @login = N''' + @user_sysadmin + ''''
-			+ CASE WHEN (SELECT COUNT(1) FROM sys.syslogins WHERE sysadmin = 1) = @id THEN '
-			GO' ELSE '' END + ''
 
 			SET @id += 1
 		END
@@ -315,22 +367,20 @@ BEGIN
 			--只要有filter就會有這個 Articles
 			IF(@filter_clause <> '')
 			BEGIN
-				SELECT @filter_proc = OBJECT_NAME(referencing_id)
-				FROM sys.sql_expression_dependencies AS sed
-				INNER JOIN sys.objects AS o ON sed.referencing_id = o.object_id
-				WHERE o.type_desc = 'REPLICATION_FILTER_PROCEDURE'
-				AND referenced_entity_name = @TBname
-
-				SET @SQL_articles += '
+				SELECT @SQL_articles += '
 				-- Adding the article filter
 				EXEC sp_articlefilter
 					@publication = N''' + @pubname + ''',
 					@article = N''' + @TBname + ''',
-					@filter_name = N''' + @filter_proc + ''',
+					@filter_name = N''' + OBJECT_NAME(referencing_id) + ''',
 					@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
 					@force_invalidate_snapshot = 1,
 					@force_reinit_subscription = 1
 				GO'
+				FROM sys.sql_expression_dependencies AS sed
+				INNER JOIN sys.objects AS o ON sed.referencing_id = o.object_id
+				WHERE o.type_desc = 'REPLICATION_FILTER_PROCEDURE'
+				AND referenced_entity_name = @TBname
 			END
 
 			--只要有partition或是filter就會有這個 Articles
@@ -386,7 +436,7 @@ BEGIN
 
 		IF((SELECT [name] FROM ##syspublications WHERE pubid = @pubid) <> '')
 		BEGIN
-			INSERT INTO #TBpub VALUES('/*',@DBname,@pubname,'*/',@SQL_publication+@SQL_user_login,@SQL_articles+@SQL_subscriptions)
+			INSERT INTO #TBpub VALUES('/*',@DBname,@pubname,'*/',@SQL_publication,@SQL_user_login,@SQL_articles,@SQL_subscriptions)
 		END
 
 		SET @pubid += 1
@@ -409,4 +459,5 @@ BEGIN
 	SET @pubid = 1
 END
 
+SELECT @SQL_distribution AS Add_distribution
 SELECT * FROM #TBpub
