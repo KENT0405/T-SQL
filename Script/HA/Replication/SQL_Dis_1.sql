@@ -1,15 +1,20 @@
 DECLARE
-	@SQL_dis	NVARCHAR(MAX) = '',
-	@DBname		VARCHAR(100) = '-',
-	@sn			INT = 1
+	@SQL_dis		NVARCHAR(MAX) = '',
+	@DBname			VARCHAR(100) = '-',
+	@is_distributor	VARCHAR(100) = '',
+	@sn				INT = 1
+
+SELECT @is_distributor = data_source
+FROM sys.servers
+WHERE is_distributor = 1
 
 SET @SQL_dis = '
 	/****** Begin: Script to be run at Publisher ******/
 
 	-- Adding Distributor
 	USE [master]
-	exec sp_adddistributor @distributor = N''IC-DIS-DB'', @password = N''''
-	exec sp_addsubscriber @subscriber = N''IC-DIS-DB'', @type = 0, @description = N''''
+	exec sp_adddistributor @distributor = N''' + @is_distributor + ''', @password = N''''
+	exec sp_addsubscriber @subscriber = N''' + @is_distributor + ''', @type = 0, @description = N''''
 	GO
 
 	/****** End: Script to be run at Publisher ******/
