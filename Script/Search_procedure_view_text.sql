@@ -3,11 +3,7 @@ SELECT DISTINCT
 	c.*
 FROM syscomments c
 INNER JOIN sysobjects o ON c.id=o.id
-WHERE
-(
-		o.xtype = 'P'	--查SP
-	OR	o.xtype = 'V'	--查View
-)
+WHERE(o.xtype = 'P' OR	o.xtype = 'V')
 And
 (
 		o.name LIKE '%特定文字%'	--查SP或View名稱
