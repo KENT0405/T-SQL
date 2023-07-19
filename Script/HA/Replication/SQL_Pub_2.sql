@@ -1,6 +1,5 @@
 DECLARE
 	@SQL_publication		NVARCHAR(MAX) = '',
-	@SQL_snapshot			NVARCHAR(MAX) = '',
 	@SQL_user_login			NVARCHAR(MAX) = '',
 	@SQL_articles			NVARCHAR(MAX) = '',
 	@SQL_partition_columns	NVARCHAR(MAX) = '',
@@ -40,10 +39,7 @@ CREATE TABLE #TBpub
 	PubName						VARCHAR(100),
 	ll							VARCHAR(2),
 	Addpublication				NVARCHAR(MAX),
-	Addpublication_snapshot		NVARCHAR(MAX),
-	Adduser						NVARCHAR(MAX),
-	Addarticles					NVARCHAR(MAX),
-	Addsubscriptions			NVARCHAR(MAX)
+	Addarticles					NVARCHAR(MAX)
 )
 ------------------------------------------------------------------------------------------
 --將所有DB放進暫存表裡
@@ -136,9 +132,7 @@ BEGIN
 				@enabled_for_p2p = N''false'',
 				@enabled_for_het_sub = N''false''
 			GO
-		'
 
-		SET @SQL_snapshot = N'
 			EXEC sp_addpublication_snapshot
 				@publication = N''' + @pubname  + ''',
 				@frequency_type = 1,
@@ -392,7 +386,7 @@ BEGIN
 
 		IF((SELECT [name] FROM ##syspublications WHERE pubid = @pubid) <> '')
 		BEGIN
-			INSERT INTO #TBpub VALUES('/*',@DBname,@pubname,'*/',@SQL_publication,@SQL_snapshot,@SQL_user_login,@SQL_articles,@SQL_subscriptions)
+			INSERT INTO #TBpub VALUES('/*',@DBname,@pubname,'*/',@SQL_publication+@SQL_user_login,@SQL_articles+@SQL_subscriptions)
 		END
 
 		SET @pubid += 1
