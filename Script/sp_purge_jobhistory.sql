@@ -1,1 +1,0 @@
-EXEC msdb.dbo.sp_purge_jobhistory @oldest_date='2023-03-20 00:00:00'
