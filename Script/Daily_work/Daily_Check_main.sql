@@ -23,7 +23,8 @@ DECLARE @T TABLE
 	del_records_count INT NULL,
 	status VARCHAR(50) NULL,
 	log_date DATE NULL,
-	str VARCHAR(MAX)
+	str VARCHAR(MAX),
+	Search_PK VARCHAR(MAX)
 )
 
 WHILE(1 = 1)
@@ -81,8 +82,17 @@ BEGIN
 	SELECT * FROM sys_data_copy_log WITH(NOLOCK) WHERE id = ' + @ID + '
 	'
 
+	SET @SQL_PK = N'
+	SELECT COUNT(*)
+	FROM one_wallet_transfer AS A WITH(NOLOCK)
+	JOIN one_wallet_transfer_all AS B WITH(NOLOCK)
+	ON A.id = B.id
+	AND A.save_date = B.save_date
+	WHERE ' + @date_range_PK + '
+	'
+
 	INSERT INTO @T
-	SELECT *,@SQL
+	SELECT *,@SQL,@SQL_PK
 	FROM sys_data_copy_log WITH(NOLOCK)
 	WHERE status < 0 AND id = @ID
 
@@ -93,16 +103,7 @@ BEGIN
 	SET @i += 1
 END
 
-SET @SQL_PK = N'
-SELECT COUNT(*)
-FROM one_wallet_transfer AS A WITH(NOLOCK)
-JOIN one_wallet_transfer_all AS B WITH(NOLOCK)
-ON A.id = B.id
-AND A.save_date = B.save_date
-WHERE ' + @date_range_PK + '
-'
-
-SELECT *, @SQL_PK AS Search_PK
+SELECT *
 FROM @T
 GO
 
