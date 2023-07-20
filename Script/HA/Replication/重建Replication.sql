@@ -15,7 +15,6 @@ DECLARE
 	@articles_del_cmd		VARCHAR(100) = '',
 	@articles_ins_cmd		VARCHAR(100) = '',
 	@articles_upd_cmd		VARCHAR(100) = '',
-	@partition_columns		VARCHAR(100) = '',
 	@sub_server				VARCHAR(100) = '',
 	@sub_destdb				VARCHAR(100) = '',
 	@view_name				VARCHAR(100) = '',
@@ -257,7 +256,7 @@ BEGIN
 			FROM #articles
 			WHERE ID = @article_id
 
-			IF @@ROWCOUNT = 0
+			IF (@@ROWCOUNT = 0)
 				BREAK;
 
 			--查出partition columns的Table有哪些
@@ -285,47 +284,48 @@ BEGIN
 
 			IF (@@ROWCOUNT <> 0) --確認table是否有配對到
 			BEGIN
-				DROP TABLE IF EXISTS #partition_columns;
+				DROP TABLE IF EXISTS ##partition_columns;
 
-				;WITH CTE1 --找出partition columns
-				AS
-				(
-					SELECT ROW_NUMBER() OVER(ORDER BY obj.name) AS ID, col.name
-					FROM sys.objects AS obj
-					JOIN sys.all_columns AS col
-					ON obj.object_id = col.object_id
-					WHERE obj.name = @TBname
-				)
-				SELECT ROW_NUMBER() OVER(ORDER BY scol.colid) AS [rank], CTE1.name
-				INTO #partition_columns
-				FROM [idc_data].[dbo].[sysarticlecolumns] AS scol JOIN CTE1
-				ON scol.colid = CTE1.ID
-				WHERE scol.artid = @artid
+				EXEC --找出partition columns
+				('
+					;WITH CTE1
+					AS
+					(
+						SELECT ROW_NUMBER() OVER(ORDER BY obj.name) AS ID, col.name
+						FROM ' + @DBname + '.sys.objects AS obj
+						JOIN ' + @DBname + '.sys.all_columns AS col
+						ON obj.object_id = col.object_id
+						WHERE obj.name = ' + @TBname + '
+					)
+					SELECT ROW_NUMBER() OVER(ORDER BY scol.colid) AS [rank], CTE1.name
+					INTO ##partition_columns
+					FROM [idc_data].[dbo].[sysarticlecolumns] AS scol JOIN CTE1
+					ON scol.colid = CTE1.ID
+					WHERE scol.artid = ' + @artid + '
+				')
 
 				WHILE(1 = 1)
 				BEGIN
-					SELECT @partition_columns = [name]
-					FROM #partition_columns
+					SELECT @SQL_partition_columns +=
+					CASE WHEN @rank = 1 THEN '
+			-- Adding the article''s partition column(s)' ELSE '' END + '
+			EXEC sp_articlecolumn
+				@publication = N''' + @TBname + ''',
+				@article = N''' + @TBname + ''',
+				@column = N''' + [name] + ''',
+				@operation = N''add'',
+				@force_invalidate_snapshot = 1,
+				@force_reinit_subscription = 1'
+					FROM ##partition_columns
 					WHERE [rank] = @rank
 
-					IF @@ROWCOUNT = 0
+					IF (SELECT COUNT(*) FROM ##partition_columns) <= @rank
 					BEGIN
 						SET @SQL_partition_columns += '
 				GO
 					'
 						BREAK;
 					END
-
-					SET @SQL_partition_columns +=
-					CASE WHEN @rank = 1 THEN '
-				-- Adding the article''s partition column(s)' ELSE '' END + '
-				EXEC sp_articlecolumn
-					@publication = N''' + @TBname + ''',
-					@article = N''' + @TBname + ''',
-					@column = N''' + @partition_columns + ''',
-					@operation = N''add'',
-					@force_invalidate_snapshot = 1,
-					@force_reinit_subscription = 1'
 
 					SET @rank += 1
 				END --WHILE
@@ -368,15 +368,15 @@ BEGIN
 			IF(@filter_clause <> '')
 			BEGIN
 				SELECT @SQL_articles += '
-				-- Adding the article filter
-				EXEC sp_articlefilter
-					@publication = N''' + @pubname + ''',
-					@article = N''' + @TBname + ''',
-					@filter_name = N''' + OBJECT_NAME(referencing_id) + ''',
-					@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
-					@force_invalidate_snapshot = 1,
-					@force_reinit_subscription = 1
-				GO'
+			-- Adding the article filter
+			EXEC sp_articlefilter
+				@publication = N''' + @pubname + ''',
+				@article = N''' + @TBname + ''',
+				@filter_name = N''' + OBJECT_NAME(referencing_id) + ''',
+				@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
+				@force_invalidate_snapshot = 1,
+				@force_reinit_subscription = 1
+			GO'
 				FROM sys.sql_expression_dependencies AS sed
 				INNER JOIN sys.objects AS o ON sed.referencing_id = o.object_id
 				WHERE o.type_desc = 'REPLICATION_FILTER_PROCEDURE'
@@ -384,7 +384,7 @@ BEGIN
 			END
 
 			--只要有partition或是filter就會有這個 Articles
-			IF(@partition_columns <> '' OR @filter_clause <> '')
+			IF(@SQL_partition_columns <> '' OR @filter_clause <> '')
 			BEGIN
 				SELECT @view_name = OBJECT_NAME(referencing_id)
 				FROM sys.sql_expression_dependencies AS sed
@@ -397,16 +397,16 @@ BEGIN
 				BEGIN
 
 					SET @SQL_articles += '
-				-- Adding the article synchronization object
-				EXEC sp_articleview
-					@publication = N''' + @pubname + ''',
-					@article = N''' + @TBname + ''',
-					@view_name = N''' + @view_name + ''',
-					@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
-					@force_invalidate_snapshot = 1,
-					@force_reinit_subscription = 1
-				GO
-				'
+			-- Adding the article synchronization object
+			EXEC sp_articleview
+				@publication = N''' + @pubname + ''',
+				@article = N''' + @TBname + ''',
+				@view_name = N''' + @view_name + ''',
+				@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
+				@force_invalidate_snapshot = 1,
+				@force_reinit_subscription = 1
+			GO
+			'
 				END
 			END
 
@@ -446,7 +446,6 @@ BEGIN
 		SET @id = 1
 		SET @article_id = 1
 		SET @filter_clause = ''
-		SET @partition_columns = ''
 		SET @SQL_user_login = ''
 		SET @SQL_articles = ''
 		SET @SQL_subscriptions = ''
