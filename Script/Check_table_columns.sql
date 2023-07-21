@@ -16,6 +16,7 @@ JOIN (SELECT NAME, OBJECT_ID FROM sys.tables) AS tb
 ON tb.object_id = c.object_id
 WHERE t.NAME != 'sysname'
 --AND tb.NAME = 'ticket'
+--AND c.name = ''
 --AND t.name = 'nvarchar'
 
 
