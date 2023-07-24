@@ -192,7 +192,7 @@ Free_Space_GB,
 CAST(Free_Space_GB*100/Total_Space_GB AS NUMERIC(18,2)) AS Free_Space_Percent
 FROM T1
 WHERE Drive_Name = 'D'
-AND CAST(Free_Space_GB*100/Total_Space_GB AS NUMERIC(18,2)) <= 30
+AND CAST(Free_Space_GB*100/Total_Space_GB AS NUMERIC(18,2)) <= 20
 GO
 
 ---------------------------------------------------------------
