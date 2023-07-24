@@ -20,10 +20,10 @@ BEGIN
 	DECLARE
 		@reorganizestr NVARCHAR(MAX) = '''',
 		@updatestatstr NVARCHAR(MAX) = '''',
-		@DBNAME VARCHAR(100) = DB_NAME(),
+		@Message  VARCHAR(100) = ''REORGANIZE : '' + DB_NAME(),
 		@ID INT = 1
 
-	RAISERROR(@DBNAME,0,1) WITH NOWAIT;
+	RAISERROR(@Message,0,1) WITH NOWAIT;
 
 	DROP TABLE IF EXISTS #temp1, #retemp, #uptemp;
 
@@ -89,10 +89,10 @@ BEGIN
 	DECLARE
 		@reorganizestr NVARCHAR(MAX) = '''',
 		@updatestatstr NVARCHAR(MAX) = '''',
-		@DBNAME VARCHAR(100) = DB_NAME(),
+		@Message  VARCHAR(100) = ''UPDATESTATS : '' + DB_NAME(),
 		@ID INT = 1
 
-	RAISERROR(@DBNAME,0,1) WITH NOWAIT;
+	RAISERROR(@Message,0,1) WITH NOWAIT;
 
 	DROP TABLE IF EXISTS #temp1, #retemp, #uptemp;
 
