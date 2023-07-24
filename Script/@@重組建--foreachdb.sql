@@ -15,7 +15,8 @@ IF
 	DB_NAME() = ''master''	OR
 	DB_NAME() = ''model''	OR
 	DB_NAME() = ''msdb''	OR
-	DB_NAME() = ''tempdb''
+	DB_NAME() = ''tempdb''	OR
+	DB_NAME() = ''mdw_data''
 )
 BEGIN
 	PRINT ''Skip System Databases : '' + DB_NAME()
@@ -82,7 +83,8 @@ IF
 	DB_NAME() = ''master''	OR
 	DB_NAME() = ''model''	OR
 	DB_NAME() = ''msdb''	OR
-	DB_NAME() = ''tempdb''
+	DB_NAME() = ''tempdb''	OR
+	DB_NAME() = ''mdw_data''
 )
 BEGIN
 	PRINT ''Skip System Databases : '' + DB_NAME()
