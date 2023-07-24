@@ -17,11 +17,7 @@ DECLARE
 	@articles_del_cmd		VARCHAR(100) = '',
 	@articles_ins_cmd		VARCHAR(100) = '',
 	@articles_upd_cmd		VARCHAR(100) = '',
-	@sub_server				VARCHAR(100) = '',
-	@sub_destdb				VARCHAR(100) = '',
-	@view_name				VARCHAR(100) = '',
 	@filter_clause			VARCHAR(100) = '',
-	@filter					INT,
 	@artid					VARCHAR(100) = '',
 	@sn						INT = 1,
 	@id						INT = 1,
@@ -252,7 +248,6 @@ BEGIN
 				@articles_craete_script = creation_script,
 				@articles_schema_option = schema_option,
 				@filter_clause = filter_clause,
-				@filter = [filter],
 				@articles_del_cmd = del_cmd,
 				@articles_ins_cmd = ins_cmd,
 				@articles_upd_cmd = upd_cmd,
@@ -328,7 +323,7 @@ BEGIN
 					IF (SELECT COUNT(*) FROM ##partition_columns) <= @rank
 					BEGIN
 						SET @SQL_partition_columns += '
-				GO
+			GO
 					'
 						BREAK;
 					END
@@ -373,20 +368,30 @@ BEGIN
 			--只要有filter就會有這個 Articles
 			IF(@filter_clause <> '')
 			BEGIN
+				DROP TABLE IF EXISTS ##FILTER_NAME;
+				EXEC
+				('
+					USE [' + @DBname + '];
+					SELECT OBJECT_NAME(referencing_id) AS filter_name
+					INTO ##FILTER_NAME
+					FROM sys.sql_expression_dependencies AS sed
+					INNER JOIN sys.objects AS o ON sed.referencing_id = o.object_id
+					WHERE o.type_desc = ''REPLICATION_FILTER_PROCEDURE''
+					AND referenced_entity_name = ''' + @TBname + '''
+				')
+
 				SELECT @SQL_articles += '
 			-- Adding the article filter
 			EXEC sp_articlefilter
 				@publication = N''' + @pubname + ''',
 				@article = N''' + @TBname + ''',
-				@filter_name = N''' + OBJECT_NAME(referencing_id) + ''',
+				@filter_name = N''' + filter_name + ''',
 				@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
 				@force_invalidate_snapshot = 1,
 				@force_reinit_subscription = 1
-			GO'
-				FROM sys.sql_expression_dependencies AS sed
-				INNER JOIN sys.objects AS o ON sed.referencing_id = o.object_id
-				WHERE o.type_desc = 'REPLICATION_FILTER_PROCEDURE'
-				AND referenced_entity_name = @TBname
+			GO
+			'
+				FROM ##FILTER_NAME
 			END
 
 			--只要有partition或是filter就會有這個 Articles
@@ -405,48 +410,40 @@ BEGIN
 					AND referenced_entity_name = ''' + @TBname + '''
 				')
 
-				SELECT @view_name = sync_name
-				FROM ##SYNC_NAME
-
-				IF(@@ROWCOUNT <> 0)
-				BEGIN
-
-					SET @SQL_articles += '
+				SELECT @SQL_articles += '
 			-- Adding the article synchronization object
 			EXEC sp_articleview
 				@publication = N''' + @pubname + ''',
 				@article = N''' + @TBname + ''',
-				@view_name = N''' + @view_name + ''',
+				@view_name = N''' + sync_name + ''',
 				@filter_clause = N''' + CASE WHEN @filter_clause IS NULL THEN '' ELSE @filter_clause END + ''',
 				@force_invalidate_snapshot = 1,
 				@force_reinit_subscription = 1
 			GO
 			'
-				END
+				FROM ##SYNC_NAME
+
 			END
 
-			--Adding the transactional subscriptions
-			SELECT
-				@sub_server = srvname,
-				@sub_destdb = dest_db
-			FROM ##sysarticles
-			WHERE dest_table = @TBname
-
-			SET @SQL_subscriptions = '
+			--Adding the transactional subscription
+			SELECT @SQL_subscriptions = '
 			-- Adding the transactional subscriptions
 			EXEC sp_addsubscription
 				@publication = N''' + @pubname + ''',
-				@subscriber = N''' + @sub_server + ''',
-				@destination_db = N''' + @sub_destdb + ''',
-				@subscription_type = N''' + CASE WHEN (SELECT subscription_type FROM ##sysarticles WHERE dest_table = @TBname) = 1 THEN 'PULL' ELSE 'PUSH' END + ''',
-				@sync_type = N''' + CASE WHEN (SELECT sync_type FROM ##sysarticles WHERE dest_table = @TBname) = 1 THEN 'Automatic' ELSE 'None' END + ''',
+				@subscriber = N''' + srvname + ''',
+				@destination_db = N''' + dest_db + ''',
+				@subscription_type = N''' + CASE WHEN subscription_type = 1 THEN 'PULL' ELSE 'PUSH' END + ''',
+				@sync_type = N''' + CASE WHEN sync_type = 1 THEN 'Automatic' ELSE 'None' END + ''',
 				@article = N''all'',
-				@update_mode = N''' + CASE WHEN (SELECT update_mode FROM ##sysarticles WHERE dest_table = @TBname) = 0 THEN 'read only' ELSE 'immediate-updating' END + ''',
+				@update_mode = N''' + CASE WHEN update_mode = 0 THEN 'read only' ELSE 'immediate-updating' END + ''',
 				@subscriber_type = 0
 			GO
 			'
+			FROM ##sysarticles
+			WHERE dest_table = @TBname
 
 			SET @article_id += 1
+
 		END	--WHILE
 
 		IF((SELECT [name] FROM ##syspublications WHERE pubid = @pubid) <> '')
