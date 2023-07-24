@@ -4,6 +4,13 @@ DECLARE
 
 SET @reorganizestrsql = N'use [?];
 
+DECLARE
+	@reorganizestr NVARCHAR(MAX) = '''',
+	@updatestatstr NVARCHAR(MAX) = '''',
+	@SYSMessage  VARCHAR(100) = ''Skip System Databases : '' + DB_NAME(),
+	@Message  VARCHAR(100) = ''REORGANIZE : '' + DB_NAME(),
+	@ID INT = 1
+
 IF
 (
 	DB_NAME() = ''master''	OR
@@ -12,16 +19,10 @@ IF
 	DB_NAME() = ''tempdb''
 )
 BEGIN
-	PRINT ''Skip System Databases''
+	RAISERROR(@SYSMessage,0,1) WITH NOWAIT;
 END
 ELSE
 BEGIN
-
-	DECLARE
-		@reorganizestr NVARCHAR(MAX) = '''',
-		@updatestatstr NVARCHAR(MAX) = '''',
-		@Message  VARCHAR(100) = ''REORGANIZE : '' + DB_NAME(),
-		@ID INT = 1
 
 	RAISERROR(@Message,0,1) WITH NOWAIT;
 
@@ -73,6 +74,13 @@ END
 
 SET @updatestatstrsql = N'use [?];
 
+DECLARE
+	@reorganizestr NVARCHAR(MAX) = '''',
+	@updatestatstr NVARCHAR(MAX) = '''',
+	@SYSMessage  VARCHAR(100) = ''Skip System Databases : '' + DB_NAME(),
+	@Message  VARCHAR(100) = ''UPDATESTATS : '' + DB_NAME(),
+	@ID INT = 1
+
 IF
 (
 	DB_NAME() = ''master''	OR
@@ -81,16 +89,10 @@ IF
 	DB_NAME() = ''tempdb''
 )
 BEGIN
-	PRINT ''Skip System Databases''
+	RAISERROR(@SYSMessage,0,1) WITH NOWAIT;
 END
 ELSE
 BEGIN
-
-	DECLARE
-		@reorganizestr NVARCHAR(MAX) = '''',
-		@updatestatstr NVARCHAR(MAX) = '''',
-		@Message  VARCHAR(100) = ''UPDATESTATS : '' + DB_NAME(),
-		@ID INT = 1
 
 	RAISERROR(@Message,0,1) WITH NOWAIT;
 
