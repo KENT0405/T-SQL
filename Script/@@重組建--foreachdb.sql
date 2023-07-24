@@ -7,7 +7,6 @@ SET @reorganizestrsql = N'use [?];
 DECLARE
 	@reorganizestr NVARCHAR(MAX) = '''',
 	@updatestatstr NVARCHAR(MAX) = '''',
-	@SYSMessage  VARCHAR(100) = ''Skip System Databases : '' + DB_NAME(),
 	@Message  VARCHAR(100) = ''REORGANIZE : '' + DB_NAME(),
 	@ID INT = 1
 
@@ -19,7 +18,7 @@ IF
 	DB_NAME() = ''tempdb''
 )
 BEGIN
-	RAISERROR(@SYSMessage,0,1) WITH NOWAIT;
+	PRINT ''Skip System Databases : '' + DB_NAME()
 END
 ELSE
 BEGIN
@@ -75,10 +74,9 @@ END
 SET @updatestatstrsql = N'use [?];
 
 DECLARE
-	@reorganizestr NVARCHAR(MAX) = '''',
-	@updatestatstr NVARCHAR(MAX) = '''',
-	@SYSMessage  VARCHAR(100) = ''Skip System Databases : '' + DB_NAME(),
-	@Message  VARCHAR(100) = ''UPDATESTATS : '' + DB_NAME(),
+	@reorganizestr	NVARCHAR(MAX) = '''',
+	@updatestatstr	NVARCHAR(MAX) = '''',
+	@Message		VARCHAR(100) = ''UPDATESTATS : '' + DB_NAME(),
 	@ID INT = 1
 
 IF
@@ -89,7 +87,7 @@ IF
 	DB_NAME() = ''tempdb''
 )
 BEGIN
-	RAISERROR(@SYSMessage,0,1) WITH NOWAIT;
+	PRINT ''Skip System Databases : '' + DB_NAME()
 END
 ELSE
 BEGIN
