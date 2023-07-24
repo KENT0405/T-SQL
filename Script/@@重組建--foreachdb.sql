@@ -5,10 +5,10 @@ DECLARE
 SET @reorganizestrsql = N'use [?];
 
 DECLARE
-	@reorganizestr NVARCHAR(MAX) = '''',
-	@updatestatstr NVARCHAR(MAX) = '''',
-	@Message  VARCHAR(100) = ''REORGANIZE : '' + DB_NAME(),
-	@ID INT = 1
+	@reorganizestr 	NVARCHAR(MAX) = '''',
+	@updatestatstr 	NVARCHAR(MAX) = '''',
+	@Message  		VARCHAR(100) = ''REORGANIZE : '' + DB_NAME(),
+	@ID 			INT = 1
 
 IF
 (
@@ -64,8 +64,6 @@ BEGIN
 		SET @ID += 1
 	END
 
-	--------------------------------------------------------------------------------------------------------------------
-
 	EXEC(@reorganizestr)
 
 END
@@ -77,7 +75,7 @@ DECLARE
 	@reorganizestr	NVARCHAR(MAX) = '''',
 	@updatestatstr	NVARCHAR(MAX) = '''',
 	@Message		VARCHAR(100) = ''UPDATESTATS : '' + DB_NAME(),
-	@ID INT = 1
+	@ID 			INT = 1
 
 IF
 (
@@ -138,8 +136,6 @@ BEGIN
 
 		SET @ID += 1
 	END
-
-	--------------------------------------------------------------------------------------------------------------------
 
 	EXEC(@updatestatstr)
 
