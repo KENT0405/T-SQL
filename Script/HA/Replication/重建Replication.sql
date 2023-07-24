@@ -22,7 +22,7 @@ DECLARE
 	@view_name				VARCHAR(100) = '',
 	@filter_clause			VARCHAR(100) = '',
 	@filter					INT,
-	@artid					INT,
+	@artid					VARCHAR(100) = '',
 	@sn						INT = 1,
 	@id						INT = 1,
 	@pubid					INT = 1,
@@ -34,8 +34,8 @@ SELECT @SQL_distribution = '
 
 	-- Adding Distributor
 	USE [master]
-	exec sp_adddistributor @distributor = N''' + data_source + ''', @password = N''''
-	exec sp_addsubscriber @subscriber = N''' + data_source + ''', @type = 0, @description = N''''
+	exec sp_adddistributor @distributor = N''' + [data_source] + ''', @password = N''''
+	exec sp_addsubscriber @subscriber = N''' + [data_source] + ''', @type = 0, @description = N''''
 	GO
 
 	/****** End: Script to be run at Publisher ******/
@@ -118,11 +118,13 @@ BEGIN
 	IF (@@ROWCOUNT = 0)
 		BREAK;
 
-	DROP TABLE IF EXISTS ##syspublications, ##sysarticles, ##_sysarticles, ##sysarticlecolumns;
+	DROP TABLE IF EXISTS ##all_objects, ##all_columns, ##syspublications, ##sysarticles, ##_sysarticles, ##sysarticlecolumns;
 
 	--將資料insert進全域表，方便整理使用
 	EXEC
 	('
+		SELECT * INTO ##all_objects FROM '+ @DBname +'.sys.all_objects
+		SELECT * INTO ##all_columns FROM '+ @DBname +'.sys.all_columns
 		SELECT * INTO ##syspublications FROM '+ @DBname +'.dbo.syspublications
 		SELECT * INTO ##_sysarticles FROM '+ @DBname +'.dbo.sysarticles
 		SELECT * INTO ##sysarticlecolumns FROM '+ @DBname +'.dbo.sysarticlecolumns
@@ -265,24 +267,26 @@ BEGIN
 			SELECT @artid = CTE.artid
 			FROM
 			(
+				--找出複寫TABLE的欄位數量
 				SELECT artid,COUNT(colid) AS count
 				FROM ##sysarticlecolumns
 				GROUP BY artid
 			) AS CTE
-			JOIN ##_sysarticles AS art
+			JOIN ##_sysarticles AS art --找出對應的TABLE名稱
 			ON CTE.artid = art.artid
 			JOIN
 			(
+				--找出真實TABLE的欄位數量
 				SELECT obj.name,COUNT(col.name) AS count
-				FROM sys.all_columns AS col
-				JOIN sys.all_objects AS obj
+				FROM ##all_columns AS col
+				JOIN ##all_objects AS obj
 				ON col.object_id = obj.object_id
 				WHERE type = 'U'
 				GROUP BY obj.name
 			)AS cnt
 			ON art.dest_table = cnt.name
-			WHERE CTE.count <> cnt.count
-			AND art.dest_table = @TBname
+			WHERE CTE.count <> cnt.count --找出有選取欄位的TABLE
+			AND art.dest_table = @TBname --縮小範圍直接對應TABLE
 
 			IF (@@ROWCOUNT <> 0) --確認table是否有配對到
 			BEGIN
@@ -297,7 +301,7 @@ BEGIN
 						FROM ' + @DBname + '.sys.objects AS obj
 						JOIN ' + @DBname + '.sys.all_columns AS col
 						ON obj.object_id = col.object_id
-						WHERE obj.name = ' + @TBname + '
+						WHERE obj.name = ''' + @TBname + '''
 					)
 					SELECT ROW_NUMBER() OVER(ORDER BY scol.colid) AS [rank], CTE1.name
 					INTO ##partition_columns
@@ -388,12 +392,21 @@ BEGIN
 			--只要有partition或是filter就會有這個 Articles
 			IF(@SQL_partition_columns <> '' OR @filter_clause <> '')
 			BEGIN
-				SELECT @view_name = OBJECT_NAME(referencing_id)
-				FROM sys.sql_expression_dependencies AS sed
-				INNER JOIN sys.objects AS o ON sed.referencing_id = o.object_id
-				WHERE OBJECT_NAME(referencing_id) LIKE 'SYNC%'
-				AND o.type_desc = 'VIEW'
-				AND referenced_entity_name = @TBname
+				DROP TABLE IF EXISTS ##SYNC_NAME;
+				EXEC
+				('
+					USE [' + @DBname + '];
+					SELECT OBJECT_NAME(referencing_id) AS sync_name
+					INTO ##SYNC_NAME
+					FROM sys.sql_expression_dependencies AS sed
+					INNER JOIN sys.objects AS o ON sed.referencing_id = o.object_id
+					WHERE OBJECT_NAME(referencing_id) LIKE ''SYNC%''
+					AND o.type_desc = ''VIEW''
+					AND referenced_entity_name = ''' + @TBname + '''
+				')
+
+				SELECT @view_name = sync_name
+				FROM ##SYNC_NAME
 
 				IF(@@ROWCOUNT <> 0)
 				BEGIN
