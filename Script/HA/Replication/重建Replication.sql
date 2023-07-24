@@ -1,3 +1,5 @@
+SET NOCOUNT ON;
+
 DECLARE
 	@SQL_distribution		NVARCHAR(MAX) = '',
 	@SQL_publication		NVARCHAR(MAX) = '',
@@ -460,3 +462,5 @@ END
 
 SELECT @SQL_distribution AS Add_distribution
 SELECT * FROM #TBpub
+
+SET NOCOUNT OFF;
