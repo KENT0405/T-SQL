@@ -69,6 +69,8 @@ BEGIN
 END
 '
 
+PRINT ''----------------------------------------''
+
 SET @updatestatstrsql = N'use [?];
 
 DECLARE
@@ -86,7 +88,6 @@ IF
 	DB_NAME() = ''mdw_data''
 )
 BEGIN
-	PRINT ''----------------------------------------''
 	PRINT ''Skip System Databases : '' + DB_NAME()
 END
 ELSE
