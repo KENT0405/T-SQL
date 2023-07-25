@@ -23,7 +23,6 @@ BEGIN
 END
 ELSE
 BEGIN
-
 	RAISERROR(@Message,0,1) WITH NOWAIT;
 
 	DROP TABLE IF EXISTS #temp1, #retemp, #uptemp;
@@ -87,11 +86,11 @@ IF
 	DB_NAME() = ''mdw_data''
 )
 BEGIN
+	PRINT ''----------------------------------------''
 	PRINT ''Skip System Databases : '' + DB_NAME()
 END
 ELSE
 BEGIN
-
 	RAISERROR(@Message,0,1) WITH NOWAIT;
 
 	DROP TABLE IF EXISTS #temp1, #retemp, #uptemp;
