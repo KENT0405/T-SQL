@@ -69,8 +69,6 @@ BEGIN
 END
 '
 
-PRINT '----------------------------------------'
-
 SET @updatestatstrsql = N'use [?];
 
 DECLARE
@@ -145,4 +143,7 @@ END
 '
 
 EXEC sp_MSforeachdb @reorganizestrsql
+
+PRINT '----------------------------------------'
+
 EXEC sp_MSforeachdb @updatestatstrsql
