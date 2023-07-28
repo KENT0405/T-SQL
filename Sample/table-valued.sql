@@ -5,7 +5,7 @@ CREATE OR ALTER FUNCTION fntb_GetCurrArray
 RETURNS TABLE
 AS
 RETURN
-SELECT 
+SELECT
 	 curr_month
 	,SUM(curr_rate_before) AS sum_curr_rate_before
 	,SUM(real_curr_rate_after) AS sum_real_curr_rate_after
@@ -32,31 +32,29 @@ RETURNS @res TABLE
 )
 AS
 BEGIN
+	INSERT INTO @res
+	SELECT
+		curr_month
+		,SUM(curr_rate_before) AS sum_curr_rate_before
+		,SUM(real_curr_rate_after) AS sum_real_curr_rate_after
+		,AVG(real_curr_rate_before) AS avg_real_curr_rate_before
+		,AVG(real_curr_rate_after) AS avg_real_curr_rate_after
+		,COUNT(*) AS total_cnt
+	FROM sys_currency_log WITH (NOLOCK)
+	WHERE curr_month = @curr_month
+	GROUP BY curr_month
 
-INSERT INTO @res
-SELECT 
-	 curr_month
-	,SUM(curr_rate_before) AS sum_curr_rate_before
-	,SUM(real_curr_rate_after) AS sum_real_curr_rate_after
-	,AVG(real_curr_rate_before) AS avg_real_curr_rate_before
-	,AVG(real_curr_rate_after) AS avg_real_curr_rate_after
-	,COUNT(*) AS total_cnt
-FROM sys_currency_log WITH (NOLOCK)
-WHERE curr_month = @curr_month
-GROUP BY curr_month
-
-RETURN
-
+	RETURN
 END
 GO
 
-DECLARE @TABLE TABLE 
+DECLARE @TABLE TABLE
 (
 	curr_month VARCHAR(10)
 )
 
 INSERT INTO @TABLE (curr_month)
-SELECT DISTINCT curr_month 
+SELECT DISTINCT curr_month
 FROM sys_currency_log_new
 
 INSERT INTO @TABLE (curr_month) VALUES ('2022-09')
