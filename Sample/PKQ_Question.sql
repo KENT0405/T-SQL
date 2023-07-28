@@ -75,3 +75,49 @@ BEGIN
 END
 
 EXEC PROC_GetTable '1,2,3,4','3,4,5,6',1
+
+-------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------
+
+--procedure
+CREATE OR ALTER PROCEDURE PROC_GetTable
+	@str1 VARCHAR(MAX),
+	@str2 VARCHAR(MAX),
+	@bit INT
+AS
+BEGIN
+	SET NOCOUNT, ARITHABORT ON;
+
+	DECLARE
+		@SQL NVARCHAR(MAX) = 'SELECT ',
+		@ID INT = 1
+
+	DROP TABLE IF EXISTS #temp;
+
+	SELECT
+		ROW_NUMBER() OVER(ORDER BY str_value) AS ID,
+		str_value
+	INTO #temp
+	FROM fntb_GetTable(@str1,@str2,@bit)
+
+	WHILE(1 = 1)
+	BEGIN
+		SELECT @SQL += QUOTENAME(str_value,'''') + ' AS [' + CAST(ID AS VARCHAR(5)) + '],'
+		FROM #temp
+		WHERE ID = @ID
+
+		IF @@ROWCOUNT = 0
+			BREAK;
+
+		SET @ID += 1
+	END
+
+	SET @SQL = SUBSTRING(@SQL,0,LEN(@SQL))
+
+	--PRINT @SQL
+	EXEC(@SQL)
+
+	SET NOCOUNT, ARITHABORT OFF;
+END
+
+EXEC PROC_GetTable '1,2,3,4,7,8,asd,sad','3,4,5,hjh,4gh4,sad,6,7,9',0
