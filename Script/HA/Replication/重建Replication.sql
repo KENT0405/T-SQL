@@ -2,10 +2,13 @@ SET NOCOUNT ON;
 
 DECLARE
 	@SQL_distribution		NVARCHAR(MAX) = '',
+	@SQL_drop_publication	NVARCHAR(MAX) = '',
 	@SQL_publication		NVARCHAR(MAX) = '',
 	@SQL_articles			NVARCHAR(MAX) = '',
 	@SQL_partition_columns	NVARCHAR(MAX) = '',
+	@SQL_drop_subscription	NVARCHAR(MAX) = '',
 	@SQL_subscription		NVARCHAR(MAX) = '',
+	@SQL_startagent			NVARCHAR(MAX) = '',
 	@DBname					VARCHAR(100) = '',
 	@TBname					VARCHAR(100) = '',
 	@pubname				VARCHAR(100) = '',
@@ -54,9 +57,12 @@ CREATE TABLE #TBpub
 	DBname				VARCHAR(100),
 	PubName				VARCHAR(100),
 	Add_distribution	NVARCHAR(MAX),
+	Drop_publication	NVARCHAR(MAX),
 	Add_publication		NVARCHAR(MAX),
 	Add_articles		NVARCHAR(MAX),
-	Add_subscription	NVARCHAR(MAX)
+	Drop_subscription	NVARCHAR(MAX),
+	Add_subscription	NVARCHAR(MAX),
+	StartingAgent		NVARCHAR(MAX)
 )
 ------------------------------------------------------------------------------------------
 
@@ -121,7 +127,6 @@ BEGIN
 			BREAK;
 
 		SELECT @SQL_publication = N'
-/******************************************************************************************************************************************************/
 		-- Adding the transactional publication "' + @pubname + '"
 		USE [' + @DBname + ']
 		GO
@@ -358,6 +363,15 @@ BEGIN
 
 		END
 
+		-- Dropping the transactional pull subscription
+		SELECT @SQL_drop_subscription += '
+		USE [' + dest_db + ']
+		EXEC sp_droppullsubscription @publisher = N''' + @@SERVERNAME + ''', @publisher_db = N''' + @DBname + ''', @publication = N''' + @pubname + '''
+		GO
+		'
+		FROM #articles
+
+
 		--Adding the transactional subscription
 		SELECT @SQL_articles += '
 		-- Adding the transactional subscriptions
@@ -374,6 +388,9 @@ BEGIN
 		'
 		FROM ##sysarticles
 		WHERE dest_table = @TBname
+
+		SET @SQL_articles += '
+/******************************************************************************************************************************************************/'
 
 		-- Adding the transactional pull subscription
 		SELECT @SQL_subscription ='
@@ -424,9 +441,34 @@ BEGIN
 		FROM ##sysarticles
 		WHERE dest_table = @TBname
 
+		---- Starting Snapshot Agent
+		SET @SQL_startagent = '
+		-- Starting Snapshot Agent
+		USE [' + @DBname + ']
+		GO
+		EXEC sp_startpublication_snapshot @publication = N''' + @pubname + '''
+		GO
+
+/******************************************************************************************************************************************************/'
+
+		-- Dropping the transactional articles
+		SET @SQL_drop_publication = '
+		-- Dropping the transactional articles
+		USE [' + @DBname + ']
+		EXEC sp_dropsubscription @publication = N''' + @pubname + ''', @article = N''' + @TBname + ''', @subscriber = N''all'', @destination_db = N''all''
+		GO
+		USE [' + @DBname + ']
+		EXEC sp_droparticle @publication = N''' + @pubname + ''', @article = N''' + @TBname + ''', @force_invalidate_snapshot = 1
+		GO
+		-- Dropping the transactional publication
+		USE [' + @DBname + ']
+		EXEC sp_droppublication @publication = N''' + @pubname + '''
+		GO
+		'
+
 		IF((SELECT [name] FROM ##syspublications WHERE pubid = @pubid) <> '')
 		BEGIN
-			INSERT INTO #TBpub VALUES(@DBname,@pubname,@SQL_distribution,@SQL_publication,@SQL_articles,@SQL_subscription)
+			INSERT INTO #TBpub VALUES(@DBname,@pubname,@SQL_distribution,@SQL_drop_publication,@SQL_publication,@SQL_articles,@SQL_drop_subscription,@SQL_subscription,@SQL_startagent)
 		END
 
 		SET @pubid += 1
@@ -435,6 +477,7 @@ BEGIN
 		SET @filter_clause = ''
 		SET @SQL_articles = ''
 		SET @SQL_partition_columns = ''
+		SET @SQL_drop_subscription = ''
 	END
 
 	SET @sn += 1
