@@ -5,6 +5,7 @@ DECLARE
 	@SQL_publication		NVARCHAR(MAX) = '',
 	@SQL_articles			NVARCHAR(MAX) = '',
 	@SQL_partition_columns	NVARCHAR(MAX) = '',
+	@SQL_subscription		NVARCHAR(MAX) = '',
 	@DBname					VARCHAR(100) = '',
 	@TBname					VARCHAR(100) = '',
 	@pubname				VARCHAR(100) = '',
@@ -14,15 +15,11 @@ DECLARE
 	@pubid					INT = 1		--run pubid level
 
 SELECT @SQL_distribution = '
-	/****** Begin: Script to be run at Publisher ******/
-
 	-- Adding Distributor
 	USE [master]
 	exec sp_adddistributor @distributor = N''' + [data_source] + ''', @password = N''''
 	exec sp_addsubscriber @subscriber = N''' + [data_source] + ''', @type = 0, @description = N''''
 	GO
-
-	/****** End: Script to be run at Publisher ******/
 
 	/****** Begin: Script to be run at Distributor ******/
 
@@ -31,7 +28,7 @@ SELECT @SQL_distribution = '
 	exec sp_MSupdate_agenttype_default @profile_id = 1
 	exec sp_MSupdate_agenttype_default @profile_id = 2
 	exec sp_MSupdate_agenttype_default @profile_id = 4
-	exec sp_MSupdate_agenttype_default @profile_id = 6
+	exec sp_MSupdate_agenttype_default @prorfile_id = 6
 	exec sp_MSupdate_agenttype_default @profile_id = 11
 	GO
 
@@ -40,45 +37,17 @@ SELECT @SQL_distribution = '
 FROM sys.servers
 WHERE is_distributor = 1
 
-DROP TABLE IF EXISTS #DBtemp, #TBpub;
-
---將所有DB放進暫存表裡
-SELECT
-	ROW_NUMBER() OVER(ORDER BY [name]) AS sn,
-	[name] AS DBname
-INTO #DBtemp
+SELECT @SQL_distribution +='
+	-- Enabling the replication database ''' + [name] + '''
+	USE [master]
+	exec sp_replicationdboption @dbname = N''' + [name] + ''', @optname = N''publish'', @value = N''true''
+	exec [' + [name] + '].sys.sp_addlogreader_agent @job_login = null, @job_password = null, @publisher_security_mode = 1
+	exec [' + [name] + '].sys.sp_addqreader_agent @job_login = null, @job_password = null, @frompublisher = 1
+	GO'
 FROM sys.databases
 WHERE is_published = 1
 
-WHILE(1 = 1)
-BEGIN
-	SELECT @DBname = DBname
-	FROM #DBtemp
-	WHERE sn = @sn
-
-	IF (@@ROWCOUNT = 0)
-	BEGIN
-		SET @SQL_distribution += '
-	/****** End: Script to be run at Publisher ******/'
-		BREAK;
-	END
-
-	SET @SQL_distribution +=
-	CASE @sn WHEN 1 THEN '
-	/****** Begin: Script to be run at Publisher ******/
-	' ELSE '' END + '
-	-- Enabling the replication database "' + @DBname + '"
-	USE [master]
-	exec sp_replicationdboption @dbname = N''' + @DBname + ''', @optname = N''publish'', @value = N''true''
-	exec [' + @DBname + '].sys.sp_addlogreader_agent @job_login = null, @job_password = null, @publisher_security_mode = 1
-	exec [' + @DBname + '].sys.sp_addqreader_agent @job_login = null, @job_password = null, @frompublisher = 1
-	GO
-	'
-
-	SET @sn += 1
-END
-SET @sn = 1
-
+DROP TABLE IF EXISTS #DBtemp, #TBpub;
 ---------------------------------Pub_result_table----------------------------------------
 CREATE TABLE #TBpub
 (
@@ -86,9 +55,17 @@ CREATE TABLE #TBpub
 	PubName				VARCHAR(100),
 	Add_distribution	NVARCHAR(MAX),
 	Add_publication		NVARCHAR(MAX),
-	Add_articles		NVARCHAR(MAX)
+	Add_articles		NVARCHAR(MAX),
+	Add_subscription	NVARCHAR(MAX)
 )
 ------------------------------------------------------------------------------------------
+
+SELECT
+	ROW_NUMBER() OVER(ORDER BY [name]) AS sn,
+	[name] AS DBname
+INTO #DBtemp
+FROM sys.databases
+WHERE is_published = 1
 
 --DB Level
 WHILE(1 = 1)
@@ -222,9 +199,6 @@ BEGIN
 		FROM #articles
 		WHERE ID = 1
 
-		IF (@@ROWCOUNT = 0)
-			BREAK;
-
 		--查出partition columns的Table有哪些
 		SELECT @artid = CTE.artid
 		FROM
@@ -287,7 +261,7 @@ BEGIN
 
 			SET @SQL_partition_columns += '
 		GO
-				'
+		'
 		END --IF
 
 		SELECT @SQL_articles +='
@@ -401,9 +375,58 @@ BEGIN
 		FROM ##sysarticles
 		WHERE dest_table = @TBname
 
+		-- Adding the transactional pull subscription
+		SELECT @SQL_subscription ='
+		-- Adding the transactional pull subscription
+		/*** BEGIN: Script to be run at Subscriber : ' + srvname + ' ***/
+		USE [' + @DBname + ']
+		GO
+		EXEC sp_addpullsubscription
+			@publisher = N''' + @@SERVERNAME + ''',
+			@publication = N''' + @pubname + ''',
+			@publisher_db = N''' + @DBname + ''',
+			@independent_agent = N''TRUE'',
+			@subscription_type = N''PULL'',
+			@description = N'''',
+			@update_mode = N''read only'',
+			@immediate_sync = 1
+		GO
+
+		EXEC sp_addpullsubscription_agent
+			@publisher = N''' + @@SERVERNAME + ''',
+			@publisher_db =N''' + @DBname + ''',
+			@publication = N''' + @pubname + ''',
+			@distributor = N''' + srvname + ''',
+			@distributor_security_mode = 1,
+			@distributor_login = N'''',
+			@distributor_password = N'''',
+			@enabled_for_syncmgr = N''FALSE'',
+			@frequency_type = 64,
+			@frequency_interval = 0,
+			@frequency_relative_interval = 0,
+			@frequency_recurrence_factor = 0,
+			@frequency_subday = 0,
+			@frequency_subday_interval = 0,
+			@active_start_time_of_day = 0,
+			@active_end_time_of_day = 235959,
+			@active_start_date = 0,
+			@active_end_date = 0,
+			@alt_snapshot_folder = N'''',
+			@working_directory = N'''',
+			@use_ftp = N''FALSE'',
+			@job_login = NULL,
+			@job_password = NULL,
+			@publication_type = 0
+		GO
+		/*** END: Script to be run at Subscriber : ' + srvname + ' ***/
+
+/******************************************************************************************************************************************************/'
+		FROM ##sysarticles
+		WHERE dest_table = @TBname
+
 		IF((SELECT [name] FROM ##syspublications WHERE pubid = @pubid) <> '')
 		BEGIN
-			INSERT INTO #TBpub VALUES(@DBname,@pubname,@SQL_distribution,@SQL_publication+@SQL_user_login,@SQL_articles)
+			INSERT INTO #TBpub VALUES(@DBname,@pubname,@SQL_distribution,@SQL_publication,@SQL_articles,@SQL_subscription)
 		END
 
 		SET @pubid += 1
