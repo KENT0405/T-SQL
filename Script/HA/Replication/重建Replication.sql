@@ -1,6 +1,9 @@
 SET NOCOUNT ON;
 
 DECLARE
+	@DB_Name	VARCHAR(100) = '-',	-- '-' : all
+	@Pub_Name	VARCHAR(100) = '-',	-- '-' : all
+	---------------------------------------------
 	@SQL_distribution		NVARCHAR(MAX) = '',
 	@SQL_drop_publication	NVARCHAR(MAX) = '',
 	@SQL_publication		NVARCHAR(MAX) = '',
@@ -487,5 +490,8 @@ BEGIN
 END
 
 SELECT * FROM #TBpub
+WHERE 1 = 1
+AND (DBname = @DB_Name OR @DB_Name = '-')
+AND (PubName = @Pub_Name OR @Pub_Name = '-')
 
 SET NOCOUNT OFF;
