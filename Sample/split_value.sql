@@ -1,5 +1,5 @@
-DECLARE 
-	@paramStr		VARCHAR(MAX) = 'createLuckyFreeSpin,5,,1,5,6,8,9,10,,,wer,;getGames,2,,1,3,8,1,2,3,,dfg,,',
+DECLARE
+	@paramStr		VARCHAR(MAX) = 'createLuckyFreeSpin,5,,,8,,10,,,wer,;getGames,2,,,3,,3,,dfg,,;sdfij,2,,,1,2,3,,dfg,,',
 	@SQL			NVARCHAR(MAX) = '',
 	@SQL_temp		NVARCHAR(MAX) = '',
 	@split_value	NVARCHAR(MAX),
@@ -9,19 +9,16 @@ DECLARE
 
 DROP TABLE IF EXISTS ##temp;
 
-DECLARE @TB TABLE
-(
-	id INT IDENTITY(1,1),
-	split_value VARCHAR(MAX)
-)
-
-INSERT INTO @TB SELECT value
-FROM STRING_SPLIT(REPLACE(@paramStr, ' ', ''), ';')
-
 WHILE(1 = 1)
 BEGIN
+	;WITH CTE
+	AS
+	(
+		SELECT ROW_NUMBER() OVER (ORDER BY (SELECT NULL)) AS id,value AS split_value
+		FROM STRING_SPLIT(REPLACE(@paramStr, ' ', ''), ';')
+	)
 	SELECT @split_value = split_value
-	FROM @TB 
+	FROM CTE
 	WHERE id = @ID
 
 	IF @@ROWCOUNT = 0
@@ -34,7 +31,7 @@ BEGIN
 	--欄位數-1, 因為第一個是api
 	SET @count = @count - 1
 
-	--CREATE TABLE 
+	--CREATE TABLE
 	IF (@ID = 1)--只有第一圈要craete table
 	BEGIN
 		WHILE(1 = 1)

@@ -35,8 +35,13 @@ BEGIN
 		CASE isc.data_type
 			WHEN 'numeric' THEN '(' + CAST(isc.numeric_precision AS VARCHAR(3)) + ',' + CAST(isc.numeric_scale AS VARCHAR(3)) + ')'
 			WHEN 'decimal' THEN '(' + CAST(isc.numeric_precision AS VARCHAR(3)) + ',' + CAST(isc.numeric_scale AS VARCHAR(3)) + ')'
-			WHEN 'char'	   THEN '(' + CAST(isc.character_maximum_length)
-			WHEN 'varchar' THEN CASE isc.character_maximum_length WHEN -1 THEN '(MAX)' ELSE '(' + CAST(isc.character_maximum_length AS VARCHAR(10)) + ')' END
+			WHEN 'char'	   THEN '(' + CAST(isc.character_maximum_length AS VARCHAR(5)) + ')'
+			WHEN 'nchar'   THEN '(' + CAST(isc.character_maximum_length AS VARCHAR(5)) + ')'
+			WHEN 'time'    THEN '(' + CAST(isc.datetime_precision AS VARCHAR(2)) + ')'
+			WHEN 'datetime2' THEN '(' + CAST(isc.datetime_precision AS VARCHAR(2)) + ')'
+			WHEN 'varchar' THEN CASE isc.character_maximum_length WHEN -1 THEN '(MAX)' ELSE '(' + CAST(isc.character_maximum_length AS VARCHAR(5)) + ')' END
+			WHEN 'nvarchar' THEN CASE isc.character_maximum_length WHEN -1 THEN '(MAX)' ELSE '(' + CAST(isc.character_maximum_length AS VARCHAR(5)) + ')' END
+			WHEN 'varbinary' THEN CASE isc.character_maximum_length WHEN -1 THEN '(MAX)' ELSE '(' + CAST(isc.character_maximum_length AS VARCHAR(5)) + ')' END
 		ELSE '' END +
 		CASE WHEN col.is_identity = 1 THEN ' IDENTITY(' + CAST(IDENT_SEED(@TB_name) AS VARCHAR(5)) + ',' + CAST(IDENT_INCR(@TB_name) AS VARCHAR(5)) + ')' ELSE '' END +
 		CASE WHEN isc.is_nullable = 'NO' THEN ' NOT NULL,' ELSE ' NULL,' END + '
@@ -104,5 +109,5 @@ END
 
 SELECT * FROM #TABLE
 WHERE 1 = 1
---AND TB_name = 'test'
+AND TB_name = 'Create_Code_Table'
 ORDER BY TB_name
