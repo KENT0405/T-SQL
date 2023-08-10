@@ -8,6 +8,8 @@ CREATE TABLE #TABLE
 DECLARE
 	@SQL NVARCHAR(MAX) = '',
 	@SQL_TB NVARCHAR(MAX) = '',
+	@SQL_PK NVARCHAR(MAX) = '',
+	@SQL_DF NVARCHAR(MAX) = '',
 	@TB_name VARCHAR(100) = '',
 	@ID INT = 1
 
@@ -27,50 +29,75 @@ BEGIN
 	IF @@ROWCOUNT = 0
 		BREAK;
 
+	-- TABLE COLUMN
 	SELECT
 		@SQL_TB += QUOTENAME(isc.column_name) + ' ' + QUOTENAME(isc.data_type) +
 		CASE isc.data_type
 			WHEN 'numeric' THEN '(' + CAST(isc.numeric_precision AS VARCHAR(3)) + ',' + CAST(isc.numeric_scale AS VARCHAR(3)) + ')'
 			WHEN 'decimal' THEN '(' + CAST(isc.numeric_precision AS VARCHAR(3)) + ',' + CAST(isc.numeric_scale AS VARCHAR(3)) + ')'
-			WHEN 'varchar' THEN '(' + CAST(isc.character_maximum_length AS VARCHAR(10)) + ')'
+			WHEN 'char'	   THEN '(' + CAST(isc.character_maximum_length)
+			WHEN 'varchar' THEN CASE isc.character_maximum_length WHEN -1 THEN '(MAX)' ELSE '(' + CAST(isc.character_maximum_length AS VARCHAR(10)) + ')' END
 		ELSE '' END +
 		CASE WHEN col.is_identity = 1 THEN ' IDENTITY(' + CAST(IDENT_SEED(@TB_name) AS VARCHAR(5)) + ',' + CAST(IDENT_INCR(@TB_name) AS VARCHAR(5)) + ')' ELSE '' END +
-		CASE WHEN isc.is_nullable = 'NO' THEN ' NOT NULL,' ELSE ' NULL,' END
+		CASE WHEN isc.is_nullable = 'NO' THEN ' NOT NULL,' ELSE ' NULL,' END + '
+		'
 	FROM information_schema.columns isc
 	JOIN sys.tables tb ON isc.table_name = tb.name
 	JOIN sys.all_columns col ON tb.object_id = col.object_id AND isc.column_name = col.name
 	WHERE tb.name = @TB_name
 
-	SET @SQL_TB =
-
-	SELECT @SQL = '
-	CREATE TABLE [dbo].[' + @TB_name + '](
-		' + @SQL_TB +
-		CASE WHEN EXISTS(SELECT name FROM sys.indexes WHERE OBJECT_NAME(object_id) = @TB_name AND is_primary_key = 1)
-		THEN 'CONSTRAINT [' + (SELECT name FROM sys.indexes WHERE OBJECT_NAME(object_id) = @TB_name AND is_primary_key = 1) + '] PRIMARY KEY CLUSTERED
+	-- PRIMARY KEY CONSTRAINT
+	IF EXISTS(SELECT 1 FROM sys.indexes WHERE OBJECT_NAME(object_id) = @TB_name AND is_primary_key = 1)
+	BEGIN
+		SELECT @SQL_PK = ',
+		CONSTRAINT [' + i.name + '] PRIMARY KEY CLUSTERED
 		(
 			' +
-		STUFF((
-			SELECT ',' + QUOTENAME(c.name) + CASE WHEN ic.is_descending_key = 0 THEN ' ASC' ELSE ' DESC' END
-			FROM sys.indexes i
-			JOIN sys.index_columns ic ON i.object_id = ic.object_id AND i.index_id = ic.index_id
-			JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
-			WHERE i.is_primary_key = 1
-			AND OBJECT_NAME(i.object_id) = @TB_name
-			FOR XML PATH(''))
-		,1,1,'') + '
-		)WITH (PAD_INDEX = ' + CASE WHEN (SELECT is_padded FROM sys.indexes WHERE is_primary_key = 1 AND OBJECT_NAME(object_id) = @TB_name) = 0 THEN 'OFF, ' ELSE 'ON, ' END +
-		'IGNORE_DUP_KEY = ' + CASE WHEN (SELECT ignore_dup_key FROM sys.indexes WHERE is_primary_key = 1 AND OBJECT_NAME(object_id) = @TB_name) = 0 THEN 'OFF, ' ELSE 'ON, ' END +
-		'ALLOW_ROW_LOCKS = ' + CASE WHEN (SELECT allow_row_locks FROM sys.indexes WHERE is_primary_key = 1 AND OBJECT_NAME(object_id) = @TB_name) = 0 THEN 'OFF, ' ELSE 'ON, ' END +
-		'ALLOW_PAGE_LOCKS = ' + CASE WHEN (SELECT allow_page_locks FROM sys.indexes WHERE is_primary_key = 1 AND OBJECT_NAME(object_id) = @TB_name) = 0 THEN 'OFF, ' ELSE 'ON, ' END +
-		'FILLFACTOR = ' + CASE WHEN (SELECT fill_factor FROM sys.indexes WHERE is_primary_key = 1 AND OBJECT_NAME(object_id) = @TB_name) = 0 THEN '100' ELSE (SELECT CAST(fill_factor AS VARCHAR(3)) FROM sys.indexes WHERE is_primary_key = 1 AND OBJECT_NAME(object_id) = @TB_name) END + ') ON [PRIMARY] '
-		ELSE ')' END + '
+			STUFF((
+				SELECT ',' + QUOTENAME(c.name) + CASE WHEN ic.is_descending_key = 0 THEN ' ASC' ELSE ' DESC' END
+				FROM sys.index_columns ic
+				JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
+				WHERE ic.object_id = i.object_id
+				AND ic.index_id = i.index_id
+				FOR XML PATH('')
+			), 1, 1, '') + '
+		) WITH (PAD_INDEX = ' + CASE WHEN i.is_padded = 0 THEN 'OFF' ELSE 'ON' END +
+		', IGNORE_DUP_KEY = ' + CASE WHEN i.ignore_dup_key = 0 THEN 'OFF' ELSE 'ON' END +
+		', ALLOW_ROW_LOCKS = ' + CASE WHEN i.allow_row_locks = 0 THEN 'OFF' ELSE 'ON' END +
+		', ALLOW_PAGE_LOCKS = ' + CASE WHEN i.allow_page_locks = 0 THEN 'OFF' ELSE 'ON' END +
+		', FILLFACTOR = ' + CASE WHEN i.fill_factor = 0 THEN '100' ELSE CAST(i.fill_factor AS NVARCHAR(3)) END + ') ON [PRIMARY]'
+		FROM sys.indexes i
+		WHERE OBJECT_NAME(i.object_id) = @TB_name
+		AND i.is_primary_key = 1
+	END
+
+	--COLUMN DEFAULT VALUES
+	IF EXISTS(SELECT 1 FROM sys.all_columns WHERE default_object_id <> 0 AND OBJECT_NAME(object_id) = @TB_name)
+	BEGIN
+		SELECT @SQL_DF += '
+		ALTER TABLE [dbo].' + QUOTENAME(@TB_name) + ' ADD DEFAULT ' + dc.definition + ' FOR ' + QUOTENAME(c.name) + '
+		GO'
+		FROM sys.default_constraints dc
+		JOIN sys.columns c ON dc.parent_object_id = c.object_id AND dc.parent_column_id = c.column_id
+		WHERE OBJECT_NAME(c.object_id) = @TB_name
+	END
+
+	--SQL RESULT
+	SET @SQL = '
+	CREATE TABLE [dbo].[' + @TB_name + ']
+	(
+		' + STUFF(@SQL_TB,LEN(@SQL_TB) - 4,LEN(@SQL_TB) - 4,'') + @SQL_PK + '
 	)ON [PRIMARY]
-	GO'
+	GO
+	' + @SQL_DF + '
+	----------------------------------------------------------------------------------------------------------
+	'
 
 	INSERT INTO #TABLE VALUES(@TB_name,@SQL)
 
 	SET @SQL_TB = ''
+	SET @SQL_PK = ''
+	SET @SQL_DF = ''
 	SET @SQL = ''
 	SET @ID += 1
 END
