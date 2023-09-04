@@ -51,7 +51,7 @@ BEGIN
 	----------------------------------------------------------------------------------------
 	INSERT INTO one_wallet_transfer_all
 	SELECT *
-	FROM one_wallet_transfer_copyfail WITH (NOLOCK)
+	FROM one_wallet_transfer WITH (NOLOCK)
 	WHERE is_success > 0
 	AND ' + @date_range + '
 
@@ -65,7 +65,7 @@ BEGIN
 	CASE WHEN @save_start_date < FORMAT(GETDATE(),'yyyy-MM-dd 06:00:00') OR @status = -2 THEN N'
 	----------------------------------------------------------------------------------------
 	DELETE
-	FROM one_wallet_transfer_copyfail
+	FROM one_wallet_transfer
 	WHERE is_success > 0
 	AND ' + @date_range + '
 
