@@ -117,7 +117,7 @@ GO
 ---------------------Check_errormessage------------------------
 ---------------------------------------------------------------
 SELECT * FROM sys_jobs_errormessage
-WHERE Error_date >= GETDATE() - 3
+WHERE Error_date >= GETDATE() - 5
 GO
 
 ---------------------------------------------------------------
