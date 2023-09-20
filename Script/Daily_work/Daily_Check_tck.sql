@@ -171,9 +171,8 @@ WHERE step_id > 0
 )
 SELECT * FROM CTE
 WHERE 1 = 1
-AND CTE.Rundate >= DATEADD(DD,-2,GETDATE())
+AND CTE.Rundate >= DATEADD(DD,-5,GETDATE())
 AND result <> 'success'
-
 ORDER BY CTE.Rundate DESC
 GO
 
@@ -268,7 +267,7 @@ FROM (
 CROSS APPLY ed.event_data.nodes('event') AS q(n)
 WHERE 1=1
 AND n.value('(data[@name="statement"]/value)[1]', 'NVARCHAR(MAX)') NOT LIKE '%up_api_bet_history%'
-AND n.value('(@timestamp)[1]', 'DATETIME2') >= CAST(GETDATE()-3 AS DATE)
+AND n.value('(@timestamp)[1]', 'DATETIME2') >= CAST(GETDATE()-5 AS DATE)
 AND n.value('(data[@name="result"]/value)[1]', 'VARCHAR(10)') = 2
 ORDER BY n.value('(@timestamp)[1]', 'DATETIME2') DESC
 GO
@@ -289,5 +288,5 @@ CROSS APPLY ed.event_data.nodes('//executionStack/frame') AS q(n)
 CROSS APPLY ed.event_data.nodes('event') AS e(v)
 WHERE 1 = 1
 AND v.value('(@name)[1]', 'VARCHAR(50)') = 'xml_deadlock_report'
-AND v.value('(@timestamp)[1]', 'DATETIME') >= GETDATE() - 3
+AND v.value('(@timestamp)[1]', 'DATETIME') >= GETDATE() - 5
 ORDER BY v.value('(@timestamp)[1]', 'DATETIME2') DESC
