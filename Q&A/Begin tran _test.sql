@@ -1,6 +1,6 @@
 CREATE TABLE PROC_TEST
 (
-	sn int IDENTITY(1,1)
+	sn int IDENTITY(1,1),
 	test VARCHAR(20)
 )
 -----------------------------------------------------------------------------
