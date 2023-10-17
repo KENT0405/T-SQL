@@ -2,7 +2,9 @@ SELECT
     t.NAME AS TableName,
     SUM(p.rows) AS RowCounts,
 	create_date,
-	modify_date
+	modify_date,
+	data_compression,
+	fill_factor
 FROM sys.tables t
 INNER JOIN sys.indexes i ON t.OBJECT_ID = i.object_id
 INNER JOIN sys.partitions p ON i.object_id = p.OBJECT_ID AND i.index_id = p.index_id
@@ -16,5 +18,5 @@ AND p.rows > 0
 AND a.type_desc = 'IN_ROW_DATA'
 --AND modify_date <= '2020'
 --AND t.NAME like '%daily_tran%'
-GROUP BY t.Name,create_date,modify_date
+GROUP BY t.Name,create_date,modify_date,data_compression,fill_factor
 ORDER BY 2 DESC
