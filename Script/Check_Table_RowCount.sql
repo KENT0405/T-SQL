@@ -3,7 +3,11 @@ SELECT
     SUM(p.rows) AS RowCounts,
 	create_date,
 	modify_date,
-	data_compression,
+	CASE data_compression
+		WHEN 0 THEN 'NONE'
+		WHEN 1 THEN 'ROW'
+		WHEN 2 THEN 'PAGE'
+	ELSE CAST(data_compression AS VARCHAR(10)) END AS compression,
 	fill_factor
 FROM sys.tables t
 INNER JOIN sys.indexes i ON t.OBJECT_ID = i.object_id
