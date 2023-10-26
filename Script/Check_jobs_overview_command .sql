@@ -1,3 +1,6 @@
+---------------------------------------------
+---------- JOB overview command -------------
+---------------------------------------------
 USE msdb
 
 SELECT
@@ -10,7 +13,10 @@ FROM sysjobs AS jobs
 INNER JOIN sysjobsteps AS steps ON jobs.job_id = steps.job_id
 ORDER BY JobName, StepID
 
-/* JOB 裡面的所有 procedure
+
+---------------------------------------------
+--------- JOB 裡面的所有 procedure -----------
+---------------------------------------------
 ;WITH CTE
 AS
 (
@@ -58,4 +64,3 @@ SELECT DISTINCT name
 FROM sys.procedures p
 JOIN CTE8 c ON p.name = c.Segment
 ORDER BY name
-*/
