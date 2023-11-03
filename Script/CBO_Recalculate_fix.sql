@@ -60,7 +60,6 @@ GO
 
 
 
-
 /*
 DECLARE
 	@BeginDate DATE = '2023-11-02',
