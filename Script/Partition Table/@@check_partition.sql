@@ -1,14 +1,14 @@
 SELECT
-	 OBJECT_NAME(p.object_id) as TableName
-	,p.partition_number as PartitionNumber
-	,prv_left.value as LowerBoundary
-	,prv_right.value as UpperBoundary
-	,ps.name as PartitionScheme
-	,pf.name as PartitionFunction
-	,fg.name as FileGroupName
+	 OBJECT_NAME(p.object_id) AS TableName
+	,p.partition_number AS PartitionNumber
+	,prv_left.value AS LowerBoundary
+	,prv_right.value AS UpperBoundary
+	,ps.name AS PartitionScheme
+	,pf.name AS PartitionFunction
+	,fg.name AS FileGroupName
 	,p.row_count
-	,c.name as partition_column
-	,CASE WHEN data_compression = 0 THEN 'NONE' WHEN data_compression = 1 THEN 'ROWS' WHEN data_compression = 2 THEN 'PAGE' END compression
+	,c.name AS partition_column
+	,CASE WHEN data_compression = 0 THEN 'NONE' WHEN data_compression = 1 THEN 'ROWS' WHEN data_compression = 2 THEN 'PAGE' END AS compression
 	--,'ALTER TABLE ' + OBJECT_NAME(p.object_id) + ' REBUILD PARTITION = ' + CAST(p.partition_number AS VARCHAR(5)) + ' WITH (DATA_COMPRESSION = ROW);' AS compression_str
 	--,'ALTER TABLE ' + OBJECT_NAME(p.object_id) + ' SWITCH PARTITION ' + CAST(p.partition_number AS VARCHAR(3)) + ' TO ' + OBJECT_NAME(p.object_id) + '_switch PARTITION ' + CAST(p.partition_number AS VARCHAR(3)) AS swith_str
 	--,'ALTER PARTITION FUNCTION ' + QUOTENAME(pf.name,'') + '() MERGE RANGE (''' + FORMAT(CAST(prv_left.value AS DATETIME),'yyyy-MM-dd 00:00:00.000') + ''')' AS merge_str
