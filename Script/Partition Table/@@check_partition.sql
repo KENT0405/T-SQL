@@ -9,6 +9,7 @@ SELECT
 	,p.row_count
 	,c.name as partition_column
 	,CASE WHEN data_compression = 0 THEN 'NONE' WHEN data_compression = 1 THEN 'ROWS' WHEN data_compression = 2 THEN 'PAGE' END compression
+	--,'ALTER TABLE ' + OBJECT_NAME(p.object_id) + ' REBUILD PARTITION = ' + CAST(p.partition_number AS VARCHAR(5)) + ' WITH (DATA_COMPRESSION = ROW);' AS compression_str
 	--,'ALTER TABLE ' + OBJECT_NAME(p.object_id) + ' SWITCH PARTITION ' + CAST(p.partition_number AS VARCHAR(3)) + ' TO ' + OBJECT_NAME(p.object_id) + '_switch PARTITION ' + CAST(p.partition_number AS VARCHAR(3)) AS swith_str
 	--,'ALTER PARTITION FUNCTION ' + QUOTENAME(pf.name,'') + '() MERGE RANGE (''' + FORMAT(CAST(prv_left.value AS DATETIME),'yyyy-MM-dd 00:00:00.000') + ''')' AS merge_str
 	--,'ALTER PARTITION SCHEME [' + ps.name + '] NEXT USED [' + fg.name + ']; ALTER PARTITION FUNCTION ' + QUOTENAME(pf.name,'') + '() SPLIT RANGE (''' + FORMAT(CAST(prv_left.value AS DATETIME),'yyyy-MM-dd 00:00:00.000') + ''')' AS split_str
@@ -32,7 +33,8 @@ AND p.index_id < 2 --( 0:堆積 / 1:叢集索引 / >1:非叢集索引 )
 --AND partition_number < 22
 --AND fg.name = 'FG_LOG_202107'
 --AND prv_left.value BETWEEN CAST(GETDATE()-2 AS DATETIME) AND CAST(GETDATE()-1 AS DATETIME)
---AND OBJECT_NAME(p.object_id) = 'one_wallet_transfer_all'
+--AND data_compression = 0
+--AND OBJECT_NAME(p.object_id) IN ('one_wallet_transfer_all','one_wallet_transfer')
 ORDER BY 1,2
 GO
 
