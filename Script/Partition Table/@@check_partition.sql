@@ -29,8 +29,8 @@ LEFT JOIN sys.partition_range_values prv_left ON prv_left.function_id = ps.funct
 WHERE 1 = 1
 AND p.index_id < 2 --( 0:堆積 / 1:叢集索引 / >1:非叢集索引 )
 --AND ps.name IN ('Psh_owt','Psh_tck')
---AND row_count > 0
---AND partition_number < 22
+--AND p.row_count > 0
+--AND p.partition_number < 22
 --AND fg.name = 'FG_LOG_202107'
 --AND prv_left.value BETWEEN CAST(GETDATE()-2 AS DATETIME) AND CAST(GETDATE()-1 AS DATETIME)
 --AND data_compression = 0
