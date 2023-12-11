@@ -8,7 +8,7 @@ SELECT
 	,fg.name AS FileGroupName
 	,p.row_count
 	,c.name AS partition_column
-	,CASE WHEN data_compression = 0 THEN 'NONE' WHEN data_compression = 1 THEN 'ROWS' WHEN data_compression = 2 THEN 'PAGE' END AS compression
+	,CASE WHEN data_compression = 0 THEN 'NONE' WHEN data_compression = 1 THEN 'ROWS' WHEN data_compression = 2 THEN 'PAGE' ELSE CAST(data_compression AS VARCHAR(5)) END AS compression
 	--,'ALTER TABLE ' + OBJECT_NAME(p.object_id) + ' REBUILD PARTITION = ' + CAST(p.partition_number AS VARCHAR(5)) + ' WITH (DATA_COMPRESSION = ROW);' AS compression_str
 	--,'ALTER TABLE ' + OBJECT_NAME(p.object_id) + ' SWITCH PARTITION ' + CAST(p.partition_number AS VARCHAR(3)) + ' TO ' + OBJECT_NAME(p.object_id) + '_switch PARTITION ' + CAST(p.partition_number AS VARCHAR(3)) AS swith_str
 	--,'ALTER PARTITION FUNCTION ' + QUOTENAME(pf.name,'') + '() MERGE RANGE (''' + FORMAT(CAST(prv_left.value AS DATETIME),'yyyy-MM-dd 00:00:00.000') + ''')' AS merge_str
