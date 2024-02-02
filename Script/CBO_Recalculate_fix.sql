@@ -2,8 +2,8 @@
 --------------- --重撈 ByDate 的資料 ---------------------
 ----------------------------------------------------------
 DECLARE
-	@BeginDate DATE = '2023-11-01',
-	@EndDate DATE = '2023-11-03',
+	@BeginDate DATE = '2024-01-31',
+	@EndDate DATE = '2024-01-31',
 	@ServerCode VARCHAR(10) = '-',
 	@sn INT = 1,
 	@_sn INT
@@ -26,13 +26,33 @@ BEGIN
 	BEGIN
 
 		--選擇要重撈哪幾張表
-		EXEC [PROC_Get_central_merchant_daily_tran] @ServerCode,@BeginDate
+		EXEC [dbo].[PROC_Get_central_acct_daily_duration]				@ServerCode,@BeginDate
 
-		--EXEC [dbo].[PROC_Get_central_fish_daily_tran] @server_code,@tran_date
+		EXEC [dbo].[PROC_Get_central_acct_daily_tran]					@ServerCode,@BeginDate
 
-		--EXEC [dbo].[PROC_Get_central_game_fish_denom_bet_daily_tran] @server_code,@tran_date
+		EXEC [dbo].[PROC_Get_central_acct_game_daily_tran]				@ServerCode,@BeginDate
 
-		--EXEC [dbo].[PROC_Get_central_merchant_currency_daily_bet_tran] @server_code,@tran_date
+		EXEC [dbo].[PROC_Get_central_acct_game_entrant]					@ServerCode,@BeginDate
+
+		EXEC [dbo].[PROC_Get_central_acct_denom_daily_tran]				@ServerCode,@BeginDate
+
+		EXEC [dbo].[PROC_Get_central_currency_daily_bet_tran]			@ServerCode,@BeginDate
+
+		EXEC [dbo].[PROC_Get_central_device_daily_tran]					@ServerCode,@BeginDate
+
+		EXEC [dbo].[PROC_Get_central_fish_daily_tran]					@ServerCode,@BeginDate
+
+		EXEC [dbo].[PROC_Get_central_game_fish_denom_bet_daily_tran]	@ServerCode,@BeginDate
+
+		EXEC [dbo].[PROC_Get_central_merchant_currency_daily_bet_tran]	@ServerCode,@BeginDate
+
+		EXEC [dbo].[PROC_Get_central_merchant_daily_tran]				@ServerCode,@BeginDate
+
+		EXEC [dbo].[PROC_Get_central_merchant_game_daily_bet_tran]		@ServerCode,@BeginDate
+
+		EXEC [dbo].[PROC_Get_central_merchant_hour_tran_main]			@ServerCode,@BeginDate
+
+		EXEC [dbo].[PROC_Get_central_game_respin_warning_log]			@ServerCode,@BeginDate
 
 		FETCH NEXT FROM cur_server
 		INTO @ServerCode
