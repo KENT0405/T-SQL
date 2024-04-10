@@ -8,4 +8,4 @@ Grant alter on merchant_archive to fs_egame_user
 GRANT EXECUTE TO hx
 
 --給 hx 執行某一支procedure的權限
-GRANT EXECUTE ON PROCEDURE procedure_name TO hx;
+GRANT EXECUTE ON procedure_name TO hx;
