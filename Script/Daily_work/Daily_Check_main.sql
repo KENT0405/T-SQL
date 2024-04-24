@@ -51,7 +51,7 @@ BEGIN
 	----------------------------------------------------------------------------------------
 	INSERT INTO one_wallet_transfer_all
 	SELECT *
-	FROM one_wallet_transfer WITH (NOLOCK)
+	FROM one_wallet_transfer_copyfail WITH (NOLOCK)
 	WHERE is_success > 0
 	AND ' + @date_range + '
 
@@ -65,7 +65,7 @@ BEGIN
 	CASE WHEN @save_start_date < FORMAT(GETDATE(),'yyyy-MM-dd 06:00:00') OR @status = -2 THEN N'
 	----------------------------------------------------------------------------------------
 	DELETE
-	FROM one_wallet_transfer
+	FROM one_wallet_transfer_copyfail
 	WHERE is_success > 0
 	AND ' + @date_range + '
 
@@ -74,7 +74,7 @@ BEGIN
 	UPDATE sys_data_copy_log
 	SET del_records_count = @del_records_count,
 		delete_date = GETDATE(),
-		status = CASE WHEN @del_records_count = @copy_records_count THEN 2 ELSE 3 END
+		status = 4
 	WHERE id = ' + @ID + ''
 	ELSE '' END +
 	'
@@ -84,10 +84,10 @@ BEGIN
 
 	SET @SQL_PK = N'
 	SELECT COUNT(*)
-	FROM one_wallet_transfer AS A WITH(NOLOCK)
+	FROM one_wallet_transfer_copyfail AS A WITH(NOLOCK)
 	JOIN one_wallet_transfer_all AS B WITH(NOLOCK)
 	ON A.id = B.id
-	AND A.save_date = B.save_date
+	AND A.operate_time = B.operate_time
 	WHERE ' + @date_range_PK + '
 	'
 
