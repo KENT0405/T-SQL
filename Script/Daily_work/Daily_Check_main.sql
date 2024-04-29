@@ -62,7 +62,7 @@ BEGIN
 	WHERE id = ' + @ID
 	ELSE '' END +
 
-	CASE WHEN @save_start_date < FORMAT(GETDATE(),'yyyy-MM-dd 06:00:00') OR @status = -2 THEN N'
+	CASE WHEN CAST(@save_start_date AS DATE) <> CAST(GETDATE() AS DATE) THEN N'
 	----------------------------------------------------------------------------------------
 	DELETE
 	FROM one_wallet_transfer_copyfail
