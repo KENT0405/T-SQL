@@ -51,7 +51,7 @@ BEGIN
 	----------------------------------------------------------------------------------------
 	INSERT INTO one_wallet_transfer_all
 	SELECT *
-	FROM ' + CASE WHEN CAST(@save_start_date AS DATE) = CAST(GETDATE() AS DATE) THEN 'one_wallet_transfer' ELSE 'one_wallet_transfer_copyfail' + ' WITH (NOLOCK)
+	FROM ' + CASE WHEN CAST(@save_start_date AS DATE) = CAST(GETDATE() AS DATE) THEN 'one_wallet_transfer' ELSE 'one_wallet_transfer_copyfail' END + ' WITH (NOLOCK)
 	WHERE is_success > 0
 	AND ' + @date_range + '
 
@@ -85,7 +85,7 @@ BEGIN
 	SET @SQL_PK = N'
 	SELECT COUNT(*)
 	--DELETE B
-	FROM ' + CASE WHEN CAST(@save_start_date AS DATE) = CAST(GETDATE() AS DATE) THEN 'one_wallet_transfer' ELSE 'one_wallet_transfer_copyfail' + ' AS A WITH(NOLOCK)
+	FROM ' + CASE WHEN CAST(@save_start_date AS DATE) = CAST(GETDATE() AS DATE) THEN 'one_wallet_transfer' ELSE 'one_wallet_transfer_copyfail' END + ' AS A WITH(NOLOCK)
 	JOIN one_wallet_transfer_all AS B WITH(NOLOCK)
 	ON A.id = B.id
 	AND A.operate_time = B.operate_time
