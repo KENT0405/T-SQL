@@ -70,7 +70,7 @@ GO
 -----------------重算 ByMonth 的資料 ---------------------
 ----------------------------------------------------------
 
-EXEC dbo.up_central_monthly_sum_Main_Recalculate 'All','2023-06-01','2023-09-01',1,1,1,1
+EXEC dbo.up_central_monthly_sum_Main_Recalculate 'All','2024-06-01','2024-09-01',1,1,1,1
 GO
 
 
