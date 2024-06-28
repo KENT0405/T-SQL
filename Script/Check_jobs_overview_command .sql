@@ -11,6 +11,7 @@ SELECT
     steps.command AS Command
 FROM sysjobs AS jobs
 INNER JOIN sysjobsteps AS steps ON jobs.job_id = steps.job_id
+--WHERE command LIKE '%Procedure_Name%'
 ORDER BY JobName, StepID
 
 
