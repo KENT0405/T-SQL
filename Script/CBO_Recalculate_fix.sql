@@ -12,7 +12,7 @@ DECLARE cur_server CURSOR FOR
 SELECT sg_type
 FROM sys_central_servername
 WHERE sg_type <> 'EUMT'
-AND (sg_type = @ServerCode OR @ServerCode = '-')
+AND (sg_type IN (SELECT * FORM string_split(@ServerCode,',')) OR @ServerCode = '-')
 
 WHILE @BeginDate <= @EndDate
 BEGIN
