@@ -42,6 +42,8 @@ BEGIN
 
 		EXEC [dbo].[PROC_Get_central_fish_daily_tran]					@ServerCode,@BeginDate
 
+		EXEC [dbo].[PROC_Get_central_fish_acct_daily_tran] 				@ServerCode,@BeginDate
+
 		EXEC [dbo].[PROC_Get_central_game_fish_denom_bet_daily_tran]	@ServerCode,@BeginDate
 
 		EXEC [dbo].[PROC_Get_central_merchant_currency_daily_bet_tran]	@ServerCode,@BeginDate
