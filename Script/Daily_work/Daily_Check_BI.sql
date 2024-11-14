@@ -84,7 +84,7 @@ AS
 		split_time,
 		CASE
 			--ByMinute
-			WHEN sub_module LIKE '%ByToday%' OR sub_module IN ('BonusRedeemedByHour','StakeByHour','RiskMemberGainLoss')
+			WHEN sub_module LIKE '%ByToday%' OR sub_module IN ('BonusRedeemedByHour','StakeByHour','RiskMemberGainLoss','RiskMemberMonitor')
 			THEN IIF(split_time = ByMinuteTime, 'Correct', 'Error')
 
 			--ByHour
