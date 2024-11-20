@@ -88,7 +88,7 @@ AS
 			THEN IIF(split_time = ByMinuteTime, 'Correct', 'Error')
 
 			--ByHour
-			WHEN sub_module LIKE '%ByHour%' AND sub_module NOT IN ('BonusRedeemedByHour','StakeByHour')
+			WHEN sub_module LIKE '%ByHour%' AND sub_module NOT IN ('BonusRedeemedByHour','StakeByHour') OR sub_module IN ('StakeByMonth','StakeMerchantByMonth','StakeMerchantTopMemberByMonth')
 			THEN IIF(split_time = ByHourTime, 'Correct', 'Error')
 
 			--ByWeek
@@ -96,7 +96,7 @@ AS
 			THEN IIF(split_time = ByWeekTime, 'Correct', 'Error')
 
 			--ByMonth
-			WHEN sub_module LIKE '%ByMonth%'
+			WHEN sub_module LIKE '%ByMonth%' AND sub_module NOT IN ('StakeByMonth','StakeMerchantByMonth','StakeMerchantTopMemberByMonth')
 			THEN IIF(split_time = ByMonthTime, 'Correct', 'Error')
 
 			--ByDay
