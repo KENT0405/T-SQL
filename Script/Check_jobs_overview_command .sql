@@ -14,7 +14,35 @@ ORDER BY JobName, StepID
 
 
 ---------------------------------------------
---------- JOB 裡面的所有 procedure -----------
+------ JOB 裡面的所有 procedure (新版) -------
+---------------------------------------------
+;WITH CTE AS
+(
+    SELECT DISTINCT
+        LTRIM(RTRIM(s.value)) AS Segment
+    FROM msdb.dbo.sysjobs AS jobs
+    INNER JOIN msdb.dbo.sysjobsteps AS steps ON jobs.job_id = steps.job_id
+    CROSS APPLY STRING_SPLIT
+	(
+		REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(steps.command,
+						CHAR(9), ' '),  -- 替換 TAB
+                        CHAR(10), ' '), -- 替換 Enter
+                        CHAR(13), ' '), -- 替換 Enter
+                        '[', ''),       -- 移除方括號
+                        ']', ''),       -- 移除方括號
+                        ';', ' '),      -- 移除分號
+                        ' '             -- 最後拆分空格
+    ) AS s
+    WHERE LTRIM(RTRIM(s.value)) <> '' -- 過濾空值
+)
+SELECT DISTINCT p.name
+FROM sys.procedures p
+JOIN CTE ps ON p.name = ps.Segment
+ORDER BY p.name;
+
+
+---------------------------------------------
+------ JOB 裡面的所有 procedure (舊版) -------
 ---------------------------------------------
 ;WITH CTE
 AS
