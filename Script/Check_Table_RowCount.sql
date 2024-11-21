@@ -9,7 +9,7 @@ SELECT
 		WHEN 2 THEN 'PAGE'
 	ELSE CAST(data_compression AS VARCHAR(10)) END AS compression,
 	fill_factor
-	--CASE data_compression WHEN 0 THEN 'ALTER TABLE ' + t.NAME + ' REBUILD PARTITION = ALL WITH (DATA_COMPRESSION = PAGE)' END AS Alter_table_compression
+	--,CASE data_compression WHEN 0 THEN 'ALTER TABLE ' + t.NAME + ' REBUILD PARTITION = ALL WITH (DATA_COMPRESSION = PAGE)' END AS Alter_table_compression
 FROM sys.tables t
 INNER JOIN sys.indexes i ON t.OBJECT_ID = i.object_id
 INNER JOIN sys.partitions p ON i.object_id = p.OBJECT_ID AND i.index_id = p.index_id
