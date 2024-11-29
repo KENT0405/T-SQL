@@ -1,0 +1,5 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\MSSQLServer\Client\ConnectTo]
+"AG-01"="DBMSSOCN,192.168.10.21,1433"
+"AG-02"="DBMSSOCN,192.168.10.31,1433"

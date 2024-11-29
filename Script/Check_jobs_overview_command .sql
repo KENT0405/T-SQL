@@ -9,7 +9,9 @@ SELECT
     steps.command AS Command
 FROM msdb..sysjobs AS jobs
 INNER JOIN msdb..sysjobsteps AS steps ON jobs.job_id = steps.job_id
---WHERE command LIKE '%Procedure_Name%'
+WHERE 1 = 1
+--AND jobs.name LIKE '%JOBS_Sync_Table%'
+--AND command LIKE '%Procedure_Name%'
 ORDER BY JobName, StepID
 
 
