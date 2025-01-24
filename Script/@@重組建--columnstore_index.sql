@@ -29,7 +29,7 @@ GROUP BY t.name, i.name, p.partition_number
 1.判斷row_groups的多寡來決定是否重組
 2.判斷每個rows_groups的total_rows是否都有放滿(最佳 1,048,576)
 4.確認state_desc是否是COMPRESSED
-3.確認trim_reason_desc是否是NO_TRIM
+3.確認trim_reason_desc是否是NO_TRIM(最佳)、REORG(已完成重組)
 
 */
 SELECT
