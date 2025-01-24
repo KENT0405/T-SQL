@@ -10,7 +10,7 @@ SELECT
     p.partition_number,
     SUM(d.total_rows) AS total_rows,
     SUM(d.deleted_rows) AS deleted_rows,
-	SUM(d.deleted_rows) / SUM(d.total_rows) * 100 AS percent_tage,
+	CAST(SUM(d.deleted_rows) AS DECIMAL(10,2)) / CAST(SUM(d.total_rows) AS DECIMAL(10,2)) * 100 AS percent_tage,
 	SUM(CAST(c.size_in_bytes / 1024.0 / 1024.0 AS DECIMAL(10,2))) AS size_MB,
 	'ALTER INDEX ' +  i.name + ' ON ' +  t.name + ' REBUILD PARTITION = ' + CAST(p.partition_number AS VARCHAR(3)) + ' WITH (ONLINE = ON);' AS Rebuild_Index
 FROM sys.dm_db_column_store_row_group_physical_stats d
@@ -18,7 +18,7 @@ INNER JOIN sys.indexes i ON i.index_id = d.index_id AND i.object_id = d.object_i
 INNER JOIN sys.tables t ON t.object_id = i.object_id
 INNER JOIN sys.partitions p ON p.partition_number = d.partition_number AND p.index_id = i.index_id AND p.object_id = t.object_id
 INNER JOIN sys.column_store_row_groups c ON c.partition_number = p.partition_number AND c.object_id = i.object_id AND d.row_group_id = c.row_group_id
-WHERE t.name = 'acct_bet_daily_tran'
+WHERE t.name = 'acct_bet_monthly_tran'
 GROUP BY t.name, i.name, p.partition_number
 
 /*
@@ -39,7 +39,7 @@ SELECT
     d.row_group_id,
     d.total_rows,
     d.deleted_rows,
-	CAST(c.size_in_bytes / 1024.0 / 1024.0 AS DECIMAL(10,2)) AS size_MB,
+	CAST(c.size_in_bytes / 1024.0 / 1024.0 AS DECIMAL(10,2))  AS size_MB,
     d.state_desc,
     d.trim_reason_desc,
 	'ALTER INDEX ' +  i.name + ' ON ' +  t.name + ' REORGANIZE PARTITION = ' + CAST(p.partition_number AS VARCHAR(3)) + ' WITH (COMPRESS_ALL_ROW_GROUPS = ON);' AS Reorganize_Index
@@ -49,7 +49,7 @@ INNER JOIN sys.tables t ON t.object_id = i.object_id
 INNER JOIN sys.partitions p ON p.partition_number = d.partition_number AND p.index_id = i.index_id AND p.object_id = t.object_id
 INNER JOIN sys.column_store_row_groups c ON c.partition_number = p.partition_number AND c.object_id = i.object_id AND d.row_group_id = c.row_group_id
 WHERE 1 = 1 
-AND t.name = 'acct_bet_daily_tran'
-AND p.partition_number = 11
+AND t.name = 'acct_bet_monthly_tran'
+AND p.partition_number = 8
 --AND (d.state_desc <> 'COMPRESSED' OR d.deleted_rows > 0)
 ORDER BY i.index_id, d.row_group_id
