@@ -103,42 +103,44 @@ AS
 			ELSE IIF(split_time = ByDayTime, 'Correct', 'Error')
 		END AS result,
 		CASE
-			WHEN sub_module = 'BonusMaxPayoutByToday' THEN 'up_sys_data_sum_bi_bonus'
-			WHEN sub_module = 'BonusRedeemedByHour' THEN 'up_sys_data_sum_bi_bonus'
-			WHEN sub_module = 'MemberByToday' THEN 'PROC_BI_get_acct_monitor'
-			WHEN sub_module = 'MemberProductByToday' THEN 'up_sys_data_sum_bi_member'
+			--ByMinute
+			WHEN sub_module IN ('BonusMaxPayoutByToday','BonusRedeemedByHour')	THEN 'up_sys_data_sum_bi_bonus'
+			WHEN sub_module IN ('MemberByToday','MemberProductByToday')	THEN 'up_sys_data_sum_bi_member'
+			WHEN sub_module IN ('StakeByHour','StakeTopMemberByToday') THEN 'up_sys_data_sum_bi_stake'
+			WHEN sub_module IN ('SessionActiveLoginByToday','SessionChannelByToday','SessionTopBrowserByToday') THEN 'PROC_BI_get_acct_session_log'
 			WHEN sub_module = 'RiskMemberGainLoss' THEN 'PROC_risk_list'
-			WHEN sub_module = 'SessionActiveLoginByToday' THEN 'up_sys_data_sum_bi_session'
-			WHEN sub_module = 'SessionChannelByToday' THEN 'up_sys_data_sum_bi_session'
-			WHEN sub_module = 'SessionTopBrowserByToday' THEN 'up_sys_data_sum_bi_session'
-			WHEN sub_module = 'StakeByHour' THEN 'up_sys_data_sum_bi_stake'
-			WHEN sub_module = 'StakeTopMemberByToday' THEN 'up_sys_data_sum_bi_stake'
-			WHEN sub_module = 'MemberByHour' THEN 'up_sys_data_sum_bi_by_hour_member'
-			WHEN sub_module = 'MemberProductByHour' THEN 'MemberProductByHour'
-			WHEN sub_module = 'SessionActiveLoginByHour' THEN 'up_sys_data_sum_bi_by_hour_session'
-			WHEN sub_module = 'SessionChannelByHour' THEN 'up_sys_data_sum_bi_by_hour_session'
-			WHEN sub_module = 'SessionTopBrowserByHour' THEN 'up_sys_data_sum_bi_by_hour_session'
-			WHEN sub_module = 'StakeTopMemberByHour' THEN 'up_sys_data_sum_bi_by_hour_stake'
+			WHEN sub_module = 'RiskMemberMonitor' THEN 'PROC_BI_get_risk_member_monitor'
+
+			--ByHour
+			WHEN sub_module IN ('MemberByHour','MemberProductByHour') THEN 'up_sys_data_sum_bi_by_hour_member'
+			WHEN sub_module IN ('SessionActiveLoginByHour','SessionChannelByHour','SessionTopBrowserByHour') THEN 'up_sys_data_sum_bi_by_hour_session'
+			WHEN sub_module IN ('StakeTopMemberByHour','StakeByMonth','StakeMerchantByMonth','StakeMerchantTopMemberByMonth') THEN 'up_sys_data_sum_bi_by_hour_stake'
+
+			--ByDay
+			WHEN sub_module IN ('BonusRedeemedByDay','BonusTotalPayoutById') THEN 'up_sys_data_sum_bi_by_day_bouns'
+			WHEN sub_module IN ('PlatformByDay','PlatformLanguageByDay','PlatformTopBrowserByDay','PlatformTopBrowserVersionByDay') THEN 'up_sys_data_sum_bi_by_day_platform'
+			WHEN sub_module IN ('PlatformTopBrowserByPast','PlatformTopBrowserVersionByPast') THEN 'up_sys_data_sum_bi_by_past_platform'
+			WHEN sub_module IN ('StakeByDay','StakeFeatureByDay','StakeMerchantByDay','StakeTransactionOfTimeByDay','StakeTopMemberByDay','StakeMerchantTopMemberByDay') THEN 'up_sys_data_sum_bi_by_day_stake'
+			WHEN sub_module IN ('StakeFeatureGroupByDay','StakeGroupByDay') THEN 'up_sys_data_sum_bi_by_day_stake_group'
+			WHEN sub_module IN ('StakeMerchantTopMemberByPast','StakeTopMemberByPast') THEN 'up_sys_data_sum_bi_by_past_stake'
+			WHEN sub_module = 'StakeMemberDurationByDay' THEN 'PROC_BI_acct_game_duration_group_log'
+			WHEN sub_module = 'MemberEventByDay' THEN 'up_sys_data_sum_bi_by_day_member_group'
 			WHEN sub_module = 'BonusInfo' THEN 'sp_sync_lucky_info'
 			WHEN sub_module = 'CurrencyInfo' THEN 'sp_sync_sys_currency'
+			WHEN sub_module = 'LanguageInfo' THEN 'sp_sync_language_info'
 			WHEN sub_module = 'MerchantInfo' THEN 'sp_sync_merchant'
 			WHEN sub_module = 'ProductCategoryInfo' THEN 'sp_sync_game_category'
 			WHEN sub_module = 'ProductInfo' THEN 'sp_sync_game_info'
-			WHEN sub_module = 'StakeByDay' THEN 'up_sys_data_sum_bi_by_day_stake'
-			WHEN sub_module = 'StakeFeatureByDay' THEN 'up_sys_data_sum_bi_by_day_stake'
-			WHEN sub_module = 'StakeFeatureGroupByDay' THEN 'up_sys_data_sum_bi_by_day_stake_group'
-			WHEN sub_module = 'StakeGroup' THEN 'up_sys_data_sum_bi_by_day_stake_group'
-			WHEN sub_module = 'StakeGroupByDay' THEN 'up_sys_data_sum_bi_by_day_stake_group'
-			WHEN sub_module = 'StakeMemberDurationByDay' THEN 'PROC_BI_acct_game_duration_group_log'
-			WHEN sub_module = 'StakeMerchantByDay' THEN 'up_sys_data_sum_bi_by_day_stake'
-			WHEN sub_module = 'StakeMerchantTopMemberByDay' THEN 'up_sys_data_sum_bi_by_day_stake'
-			WHEN sub_module = 'StakeMerchantTopMemberByPast' THEN 'up_sys_data_sum_bi_by_past_stake'
-			WHEN sub_module = 'StakeTopMemberByDay' THEN 'up_sys_data_sum_bi_by_day_stake'
-			WHEN sub_module = 'StakeTopMemberByPast' THEN 'up_sys_data_sum_bi_by_past_stake'
-			WHEN sub_module = 'StakeTransactionOfTimeByDay' THEN 'up_sys_data_sum_bi_by_day_stake'
-			WHEN sub_module = 'StakeMerchantTopMemberByWeek' THEN 'up_sys_data_sum_bi_by_week_stake'
-			WHEN sub_module = 'StakeTopMemberByWeek' THEN 'up_sys_data_sum_bi_by_week_stake'
-			WHEN sub_module = 'StakeMerchantTopMemberByMonth' THEN 'up_sys_data_sum_bi_by_month_stake'
+
+			--ByWeek
+			WHEN sub_module IN ('PlatformTopBrowserByWeek','PlatformTopBrowserVersionByWeek') THEN 'up_sys_data_sum_bi_by_week_platform'
+			WHEN sub_module IN ('StakeMerchantTopMemberByWeek','StakeTopMemberByWeek') THEN 'up_sys_data_sum_bi_by_week_stake'
+			WHEN sub_module = 'MemberRetentionByWeek' THEN 'up_sys_data_sum_bi_by_week_member'
+
+			--ByMonth
+			WHEN sub_module IN ('PlatformTopBrowserByMonth','PlatformTopBrowserVersionByMonth') THEN 'up_sys_data_sum_bi_by_month_platform'
+			WHEN sub_module = 'CurrencyInfoByMonth' THEN 'PROC_BI_get_currency_info_by_month'
+			WHEN sub_module = 'MemberRetentionByMonth' THEN 'up_sys_data_sum_bi_by_month_member'
 			WHEN sub_module = 'StakeTopMemberByMonth' THEN 'up_sys_data_sum_bi_by_month_stake'
 		END AS ProcedureName
 	FROM CTE
