@@ -1,7 +1,7 @@
 DECLARE
 	@SQL NVARCHAR(MAX) = '',
 	@SQL_column_list NVARCHAR(MAX) = '',
-	@Table VARCHAR(100) = '',
+	@article VARCHAR(100) = '',
 	@TB_or_PROC INT = 3 --1:TB, 2:PROC, 3:ALL
 
 DROP TABLE IF EXISTS ##temp_repl, #column_list;
@@ -121,7 +121,7 @@ SELECT
 FROM ##Temp_repl a
 LEFT JOIN #column_list b ON a.publication = b.publication AND a.article = b.article
 WHERE a.publisher <> 'IC-DIS-DB'
-AND (a.article = @Table OR @Table = '')
+AND (a.article = @article OR @article = '')
 
 SELECT
 	a.*,
@@ -129,4 +129,4 @@ SELECT
 FROM ##Temp_repl a
 LEFT JOIN #column_list b ON a.publication = b.publication AND a.article = b.article
 WHERE a.publisher = 'IC-DIS-DB'
-AND (a.article = @Table OR @Table = '')
+AND (a.article = @article OR @article = '')
