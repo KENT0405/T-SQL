@@ -8,7 +8,7 @@ CREATE TABLE #sp_who2_results
     HostName VARCHAR(200),
     BlkBy VARCHAR(10),
     DBName VARCHAR(30),
-    Command VARCHAR(20),
+    Command VARCHAR(200),
     CPUTime BIGINT,
     DiskIO BIGINT,
     LastBatch VARCHAR(20),

@@ -51,7 +51,7 @@ BEGIN
 	----------------------------------------------------------------------------------------
 	INSERT INTO one_wallet_transfer_all
 	SELECT *
-	FROM one_wallet_transfer WITH (NOLOCK)
+	FROM ' + CASE WHEN CAST(@save_start_date AS DATE) = CAST(GETDATE() AS DATE) THEN 'one_wallet_transfer' ELSE 'one_wallet_transfer_copyfail' END + ' WITH (NOLOCK)
 	WHERE is_success > 0
 	AND ' + @date_range + '
 
@@ -62,10 +62,10 @@ BEGIN
 	WHERE id = ' + @ID
 	ELSE '' END +
 
-	CASE WHEN @save_start_date < FORMAT(GETDATE(),'yyyy-MM-dd 06:00:00') OR @status = -2 THEN N'
+	CASE WHEN CAST(@save_start_date AS DATE) <> CAST(GETDATE() AS DATE) THEN N'
 	----------------------------------------------------------------------------------------
 	DELETE
-	FROM one_wallet_transfer
+	FROM one_wallet_transfer_copyfail
 	WHERE is_success > 0
 	AND ' + @date_range + '
 
@@ -74,7 +74,7 @@ BEGIN
 	UPDATE sys_data_copy_log
 	SET del_records_count = @del_records_count,
 		delete_date = GETDATE(),
-		status = CASE WHEN @del_records_count = @copy_records_count THEN 2 ELSE 3 END
+		status = 4
 	WHERE id = ' + @ID + ''
 	ELSE '' END +
 	'
@@ -84,10 +84,11 @@ BEGIN
 
 	SET @SQL_PK = N'
 	SELECT COUNT(*)
-	FROM one_wallet_transfer AS A WITH(NOLOCK)
+	--DELETE B
+	FROM ' + CASE WHEN CAST(@save_start_date AS DATE) = CAST(GETDATE() AS DATE) THEN 'one_wallet_transfer' ELSE 'one_wallet_transfer_copyfail' END + ' AS A WITH(NOLOCK)
 	JOIN one_wallet_transfer_all AS B WITH(NOLOCK)
 	ON A.id = B.id
-	AND A.save_date = B.save_date
+	AND A.operate_time = B.operate_time
 	WHERE ' + @date_range_PK + '
 	'
 
@@ -177,18 +178,18 @@ WITH T1
 AS
 (
 	SELECT DISTINCT
-	REPLACE(vs.volume_mount_point,':\','') AS Drive_Name ,
-	CAST(vs.total_bytes / 1024.0 / 1024 / 1024 AS NUMERIC(18,2)) AS Total_Space_GB ,
-	CAST(vs.available_bytes / 1024.0 / 1024 / 1024 AS NUMERIC(18,2)) AS Free_Space_GB
+		REPLACE(vs.volume_mount_point,':\','') AS Drive_Name ,
+		CAST(vs.total_bytes / 1024.0 / 1024 / 1024 AS NUMERIC(18,2)) AS Total_Space_GB ,
+		CAST(vs.available_bytes / 1024.0 / 1024 / 1024 AS NUMERIC(18,2)) AS Free_Space_GB
 	FROM  sys.master_files AS f
 	CROSS APPLY sys.dm_os_volume_stats(f.database_id, f.file_id) AS vs
 )
 SELECT
-Drive_Name,
-Total_Space_GB,
-Total_Space_GB-Free_Space_GB AS Used_Space_GB,
-Free_Space_GB,
-CAST(Free_Space_GB*100/Total_Space_GB AS NUMERIC(18,2)) AS Free_Space_Percent
+	Drive_Name,
+	Total_Space_GB,
+	Total_Space_GB-Free_Space_GB AS Used_Space_GB,
+	Free_Space_GB,
+	CAST(Free_Space_GB*100/Total_Space_GB AS NUMERIC(18,2)) AS Free_Space_Percent
 FROM T1
 WHERE Drive_Name = 'D'
 AND CAST(Free_Space_GB*100/Total_Space_GB AS NUMERIC(18,2)) <= 30
