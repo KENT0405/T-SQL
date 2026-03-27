@@ -1,0 +1,7 @@
+SQL Server 2016不能用給的安裝檔安裝Cluster，因為驗證過不了，要執行以下才能跳過驗證:
+
+--Primary
+Setup /SkipRules=Cluster_VerifyForErrors /Action=InstallFailoverCluster
+--Secondary
+Setup /SkipRules=Cluster_VerifyForErrors /Action=AddNode
+

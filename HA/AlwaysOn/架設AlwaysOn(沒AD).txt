@@ -1,0 +1,11 @@
+建立wsfc:
+
+--Powershell Install Cluster
+Install-WindowsFeature -Name Failover-Clustering -IncludeManagementTools -Restart
+
+--1433
+New-NetFirewallRule -DisplayName "SQL" -Direction Inbound -LocalPort 1433,5022 -Protocol TCP -Action Allow
+
+new-itemproperty -path HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System -Name LocalAccountTokenFilterPolicy -Value 1
+
+new-cluster -name WINCLUSTER –Node AG-01,AG-02 -StaticAddress 192.168.10.41 -NoStorage –AdministrativeAccessPoint DNS
