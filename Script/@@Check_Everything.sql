@@ -49,7 +49,7 @@ BEGIN
 		AND o.name IN ('sys_jobs_errormessage', 'TB_JobsErrorMessage_Main')
 	)
 	SELECT @SQL = '
-	SELECT ' +
+	SELECT ''' + (SELECT TOP 1 table_name FROM CTE) + ''' AS TABLENAME, ' +
 	STUFF((
 		SELECT ', ' + IIF(col_name = 'sn','CAST(' + col_name + ' AS BIGINT)',col_name) + ' AS ' + REPLACE(IIF(col_name = 'Id','SN',UPPER(col_name)),'_','')
 		FROM CTE
