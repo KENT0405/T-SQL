@@ -25,7 +25,11 @@ SELECT
     i.is_unique,
     i.is_unique_constraint,
 	i.fill_factor,
-	p.[data_compression] --NONE = 0, ROW = 1, PAGE = 2
+	CASE
+        WHEN p.[data_compression] = 0 THEN 'NONE'
+        WHEN p.[data_compression] = 1 THEN 'ROW'
+        WHEN p.[data_compression] = 2 THEN 'PAGE'
+    END [data_compression]
 FROM sys.tables AS t
 INNER JOIN sys.indexes AS i ON t.object_id = i.object_id
 INNER JOIN sys.partitions AS p ON p.object_id = i.object_id AND p.index_id = i.index_id

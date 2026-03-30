@@ -1,13 +1,15 @@
 SELECT
-	 OBJECT_NAME(p.object_id) as TableName
-	,p.partition_number as PartitionNumber
-	,prv_left.value as LowerBoundary
-	,prv_right.value as UpperBoundary
-	,ps.name as PartitionScheme
-	,pf.name as PartitionFunction
-	,fg.name as FileGroupName
+	 OBJECT_NAME(p.object_id) AS TableName
+	,p.partition_number AS PartitionNumber
+	,prv_left.value AS LowerBoundary
+	,prv_right.value AS UpperBoundary
+	,ps.name AS PartitionScheme
+	,pf.name AS PartitionFunction
+	,fg.name AS FileGroupName
 	,p.row_count
-	,c.name as partition_column
+	,c.name AS partition_column
+	,CASE WHEN data_compression = 0 THEN 'NONE' WHEN data_compression = 1 THEN 'ROWS' WHEN data_compression = 2 THEN 'PAGE' ELSE CAST(data_compression AS VARCHAR(5)) END AS compression
+	--,'ALTER TABLE ' + OBJECT_NAME(p.object_id) + ' REBUILD PARTITION = ' + CAST(p.partition_number AS VARCHAR(5)) + ' WITH (DATA_COMPRESSION = ROW);' AS compression_str
 	--,'ALTER TABLE ' + OBJECT_NAME(p.object_id) + ' SWITCH PARTITION ' + CAST(p.partition_number AS VARCHAR(3)) + ' TO ' + OBJECT_NAME(p.object_id) + '_switch PARTITION ' + CAST(p.partition_number AS VARCHAR(3)) AS swith_str
 	--,'ALTER PARTITION FUNCTION ' + QUOTENAME(pf.name,'') + '() MERGE RANGE (''' + FORMAT(CAST(prv_left.value AS DATETIME),'yyyy-MM-dd 00:00:00.000') + ''')' AS merge_str
 	--,'ALTER PARTITION SCHEME [' + ps.name + '] NEXT USED [' + fg.name + ']; ALTER PARTITION FUNCTION ' + QUOTENAME(pf.name,'') + '() SPLIT RANGE (''' + FORMAT(CAST(prv_left.value AS DATETIME),'yyyy-MM-dd 00:00:00.000') + ''')' AS split_str
@@ -21,16 +23,18 @@ INNER JOIN sys.partition_schemes ps ON ps.data_space_id = i.data_space_id
 INNER JOIN sys.partition_functions pf ON ps.function_id = pf.function_id
 INNER JOIN sys.destination_data_spaces dds ON dds.partition_scheme_id = ps.data_space_id AND  dds.destination_id = p.partition_number
 INNER JOIN sys.filegroups fg ON fg.data_space_id = dds.data_space_id
+INNER JOIN sys.partitions pt ON pt.object_id = p.object_id AND pt.partition_id = p.partition_id AND pt.partition_number = p.partition_number
 LEFT JOIN sys.partition_range_values prv_right ON prv_right.function_id = ps.function_id AND prv_right.boundary_id = p.partition_number
 LEFT JOIN sys.partition_range_values prv_left ON prv_left.function_id = ps.function_id AND prv_left.boundary_id = p.partition_number - 1
 WHERE 1 = 1
 AND p.index_id < 2 --( 0:堆積 / 1:叢集索引 / >1:非叢集索引 )
 --AND ps.name IN ('Psh_owt','Psh_tck')
---AND row_count > 0
---AND partition_number < 22
+--AND p.row_count > 0
+--AND p.partition_number < 22
 --AND fg.name = 'FG_LOG_202107'
 --AND prv_left.value BETWEEN CAST(GETDATE()-2 AS DATETIME) AND CAST(GETDATE()-1 AS DATETIME)
---AND OBJECT_NAME(p.object_id) = 'one_wallet_transfer_all'
+--AND data_compression = 0
+--AND OBJECT_NAME(p.object_id) IN ('one_wallet_transfer_all','one_wallet_transfer')
 ORDER BY 1,2
 GO
 

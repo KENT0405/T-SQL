@@ -1,6 +1,6 @@
 DECLARE
-	 @Begin_date DATE = '2023-04-01'
-	,@End_date DATE = '2023-04-12'
+	 @Begin_date DATE = '2024-11-01'
+	,@End_date DATE = '2024-11-12'
 	,@DateString VARCHAR(200) = ''
 	,@SQL NVARCHAR(MAX) = ''
 
