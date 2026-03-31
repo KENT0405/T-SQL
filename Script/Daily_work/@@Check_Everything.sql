@@ -95,7 +95,39 @@ END
 --Tsql & DeadLock Trace
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 4)
 BEGIN
-    SELECT 'Tsql & DeadLock Trace'
+    DECLARE @SQL NVARCHAR(MAX) = ''
+
+    ;WITH CTE
+    AS
+    (
+        SELECT
+            a.name AS EventName,
+            CAST(b.target_data AS XML).value('(/EventFileTarget/File/@name)[1]', 'NVARCHAR(MAX)') AS FilePath
+        FROM sys.dm_xe_sessions a
+        JOIN sys.dm_xe_session_targets b ON a.address = b.event_session_address
+        WHERE a.session_source = 'server'
+        AND a.name IN ('T-SQL Trace','Lock Trace')
+    )
+    SELECT @SQL += '
+    SELECT
+        ''' + EventName + ''' AS EventName,
+        SUM(CASE WHEN EventTime >= FORMAT(GETDATE(),''yyyy-MM-dd 00:00:00.000'') THEN 1 ELSE 0 END) AS [Today (CNT)],
+        SUM(CASE WHEN EventTime >= GETDATE() - 1 THEN 1 ELSE 0 END) AS [last_24hour (CNT)],
+        COUNT(EventTime) / 7 AS [last_7day (AVG)]
+    FROM
+    (
+        SELECT DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) AS EventTime
+        FROM sys.fn_xe_file_target_read_file(''' + FilePath + ''', null, null, null)
+        WHERE DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) >= GETDATE() - 7
+    ) a
+    UNION ALL
+    '
+    FROM CTE
+
+    SET @SQL = LEFT(@SQL, LEN(@SQL) - 11)
+
+    --SELECT @SQL
+    EXEC (@SQL)
 END
 
 --Unclosed Profiler
