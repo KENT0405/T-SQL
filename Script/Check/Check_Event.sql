@@ -9,7 +9,7 @@ AS
 	FROM sys.dm_xe_sessions a
 	JOIN sys.dm_xe_session_targets b ON a.address = b.event_session_address
 	WHERE a.session_source = 'server'
-	AND a.name IN ('T-SQL Trace','Lock Trace')
+	AND a.name IN ('T-SQL Trace','Lock Trace') --Search Event Session Name
 )
 SELECT @SQL += '
 SELECT

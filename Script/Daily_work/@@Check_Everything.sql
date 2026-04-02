@@ -64,7 +64,7 @@ END
 --Error message
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 2)
 BEGIN
-	DECLARE @SQL NVARCHAR(MAX)
+	DECLARE @SQL_Error_message NVARCHAR(MAX) = ''
 
 	;WITH CTE
 	AS
@@ -78,7 +78,7 @@ BEGIN
 		WHERE o.type IN ('U', 'V')
 		AND o.name IN ('sys_jobs_errormessage', 'TB_JobsErrorMessage_Main')
 	)
-	SELECT @SQL = '
+	SELECT @SQL_Error_message = '
 	SELECT ''' + (SELECT TOP 1 table_name FROM CTE) + ''' AS TABLENAME, ' +
 	STUFF((
 		SELECT ', ' + IIF(col_name = 'sn','CAST(' + col_name + ' AS BIGINT)',col_name) + ' AS ' + REPLACE(IIF(col_name = 'Id','SN',UPPER(col_name)),'_','')
@@ -89,13 +89,13 @@ BEGIN
 	FROM ' + (SELECT TOP 1 table_name FROM CTE) + ' WITH(NOLOCK)'
 
 	--PRINT @SQL
-	EXEC sp_executesql  @SQL
+	EXEC sp_executesql  @SQL_Error_message
 END
 
 --Tsql & DeadLock Trace
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 4)
 BEGIN
-    DECLARE @SQL NVARCHAR(MAX) = ''
+    DECLARE @SQL_Trace NVARCHAR(MAX) = ''
 
     ;WITH CTE
     AS
@@ -108,7 +108,7 @@ BEGIN
         WHERE a.session_source = 'server'
         AND a.name IN ('T-SQL Trace','Lock Trace')
     )
-    SELECT @SQL += '
+    SELECT @SQL_Trace += '
     SELECT
         ''' + EventName + ''' AS EventName,
         SUM(CASE WHEN EventTime >= FORMAT(GETDATE(),''yyyy-MM-dd 00:00:00.000'') THEN 1 ELSE 0 END) AS [Today (CNT)],
@@ -124,10 +124,10 @@ BEGIN
     '
     FROM CTE
 
-    SET @SQL = LEFT(@SQL, LEN(@SQL) - 11)
+    SET @SQL_Trace = LEFT(@SQL_Trace, LEN(@SQL_Trace) - 11)
 
     --SELECT @SQL
-    EXEC (@SQL)
+    EXEC (@SQL_Trace)
 END
 
 --Unclosed Profiler
@@ -139,7 +139,103 @@ END
 --Space Usage
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 16)
 BEGIN
-    SELECT 'Space Usage'
+    DECLARE
+        @SQL_shrink NVARCHAR(MAX) = '',
+        @server VARCHAR(10) = 'ALL' --ALL/SRC/TKT/OTHER
+
+    DROP TABLE IF EXISTS #temp_shink;
+    CREATE TABLE #temp_shink
+    (
+        [DB_Name] VARCHAR(30),
+        [FileGroup] VARCHAR(30),
+        [Name] VARCHAR(30),
+        [File_path] VARCHAR(100),
+        [Currently_Space(MB)] INT,
+        [Space_Used(MB)] INT,
+        [Available_Space(MB)] INT,
+        Rate DECIMAL(5,2),
+        shrinkstr VARCHAR(100),
+        shrinkstr_loop VARCHAR(1000)
+    )
+
+    SELECT @SQL_shrink += '
+    USE [' + name + '];
+
+    ;WITH shink
+    AS
+    (
+        SELECT
+            ISNULL(b.groupname,'''') AS [FileGroup],
+            Name,
+            [Filename] AS [File_path],
+            CONVERT (DECIMAL(15,0),ROUND(a.Size/128.000,2)) [Currently_Space(MB)],
+            CONVERT (DECIMAL(15,0),ROUND(FILEPROPERTY(a.Name,''SpaceUsed'')/128.000,2)) AS [Space_Used(MB)],
+            CONVERT (DECIMAL(15,0),ROUND((a.Size-FILEPROPERTY(a.Name,''SpaceUsed''))/128.000,2)) AS [Available_Space(MB)]
+        FROM sysfiles a
+        LEFT JOIN sysfilegroups b
+        ON a.groupid = b.groupid
+    )
+    INSERT INTO #temp_shink
+    SELECT
+        ''' + name + ''' AS DB_Name,
+        *
+        ,CONVERT(DECIMAL(5,2),[Space_Used(MB)] / [Currently_Space(MB)]) AS Rate
+        ,''USE ' + name + '
+        DBCC SHRINKFILE (N'''''' + Name + '''''' , 8) WITH NO_INFOMSGS;'' AS shrinkstr
+        ,''
+        SET NOCOUNT ON;
+        DECLARE @I INT = '' + CAST([Currently_Space(MB)] AS VARCHAR) + '' --目前檔案size
+
+        WHILE (@I > '' + CAST([Space_Used(MB)] + 100 AS VARCHAR) + '') --目標size
+        BEGIN
+
+        DBCC SHRINKFILE (N'''''' + name + '''''' , @I) WITH NO_INFOMSGS
+
+        SET @I -= 100
+
+        END AS shrinkstr_loop
+        ''
+    FROM shink
+    WHERE 1 = 1
+    AND (CONVERT(DECIMAL(5,2),[Space_Used(MB)] / [Currently_Space(MB)]) < 0.7 AND [FileGroup] <> '''' ) --NDF/MDF
+    OR ([Currently_Space(MB)] > 10240 AND [FileGroup] = '''')--LDF
+    '
+    FROM sys.databases
+    WHERE database_id > 4
+
+    --SELECT @SQL_shrink
+
+    EXEC (@SQL_shrink)
+
+    SET @SQL_shrink = '
+    SELECT *
+    FROM #temp_shink
+    WHERE 1 = 1
+    AND RIGHT(File_path,3) <> ''ldf'' --filter LDF
+    ' +
+    CASE @server
+        WHEN 'SRC' THEN '
+        AND DB_Name LIKE ''source%''
+        AND FileGroup LIKE ''%[_]'' + CAST(MONTH(DATEADD(MONTH,-2,GETDATE())) AS VARCHAR(2))
+        '
+        WHEN 'TKT' THEN '
+        AND DB_Name LIKE ''ticket%''
+        AND ([Currently_Space(MB)] <> 8 AND [Space_Used(MB)] <> 0 AND [Available_Space(MB)] <> 8)
+        AND [Currently_Space(MB)] > 10240 --10GB
+        '
+        WHEN 'OTHER' THEN '
+        AND DB_Name NOT LIKE ''source%''
+        AND DB_Name NOT LIKE ''ticket%''
+        AND ([Currently_Space(MB)] <> 8 AND [Space_Used(MB)] <> 0 AND [Available_Space(MB)] <> 8)
+        AND [Currently_Space(MB)] > 10240 --10GB
+        '
+        WHEN 'ALL' THEN '
+        AND ([Currently_Space(MB)] <> 8 AND [Space_Used(MB)] <> 0 AND [Available_Space(MB)] <> 8)
+        AND [Currently_Space(MB)] > 10240 --10GB'
+    END + '
+    ORDER BY 1,2,3,4,5
+    '
+    EXEC (@SQL_shrink)
 END
 
 --RecordSpCached Top IO

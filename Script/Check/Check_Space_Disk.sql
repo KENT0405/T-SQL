@@ -1,5 +1,5 @@
-WITH T1 
-AS 
+WITH T1
+AS
 (
 	SELECT DISTINCT
 	REPLACE(vs.volume_mount_point,':\','') AS Drive_Name ,
@@ -15,5 +15,6 @@ Total_Space_GB-Free_Space_GB AS Used_Space_GB,
 Free_Space_GB,
 CAST(Free_Space_GB*100/Total_Space_GB AS NUMERIC(18,2)) AS Free_Space_Percent
 FROM T1
-WHERE Drive_Name = 'D'
+WHERE 1 = 1
+--AND Drive_Name = 'D'
 --AND CAST(Free_Space_GB*100/Total_Space_GB AS NUMERIC(18,2)) <= 30
