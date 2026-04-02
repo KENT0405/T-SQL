@@ -6,9 +6,9 @@ DECLARE @sp_who2 TABLE
     HostName VARCHAR(200),
     BlkBy VARCHAR(10),
     DBName VARCHAR(30),
-    Command VARCHAR(20),
+    Command VARCHAR(1000),
     CPUTime BIGINT,
-    DiskIO BIGINT,	
+    DiskIO BIGINT,
     LastBatch VARCHAR(20),
     ProgramName VARCHAR(150),
     SPID_1 INT,
@@ -18,13 +18,13 @@ DECLARE @sp_who2 TABLE
 INSERT INTO @sp_who2
 EXECUTE sp_who2
 
-SELECT s.SPID 
+SELECT s.SPID
 	  ,s.[Status]
 	  ,s.[LOGIN]
 	  ,s.HostName
-	  ,s.BlkBy 
-	  ,s.DBName 
-	  ,s.Command 
+	  ,s.BlkBy
+	  ,s.DBName
+	  ,s.Command
 	  ,CAST(s.CPUTime / 1000.0 AS NUMERIC(10,3)) AS [CPUTime/sec]
 	  ,s.DiskIO
 	  ,FORMAT(GETDATE(),'yyyy/') + s.LastBatch + '.000' AS LastBatch
@@ -32,7 +32,7 @@ SELECT s.SPID
 	  ,sqltext.text
 FROM @sp_who2 s JOIN master..sysprocesses ps
 ON s.SPID = ps.SPID OUTER APPLY sys.dm_exec_sql_text(ps.sql_handle) sqltext
-WHERE 1 = 1 
+WHERE 1 = 1
   AND S.SPID > 50
   --AND s.LOGIN = 'egame_user'
   AND S.SPID <> @@SPID

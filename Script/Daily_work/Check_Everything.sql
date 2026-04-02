@@ -86,7 +86,8 @@ BEGIN
 		WHERE rn <= 8
 		FOR XML PATH('')),1,1,'') +
 	', ' + COALESCE((SELECT col_name FROM CTE WHERE rn = 9), '''''') + ' AS ERRORDATABASE
-	FROM ' + (SELECT TOP 1 table_name FROM CTE) + ' WITH(NOLOCK)'
+	FROM ' + (SELECT TOP 1 table_name FROM CTE) + ' WITH(NOLOCK)
+    WHERE @@SERVERNAME NOT IN (''IC-BO-DB-02'',''IC-DBPMT-002'') '
 
 	--PRINT @SQL
 	EXEC sp_executesql  @SQL_Error_message
