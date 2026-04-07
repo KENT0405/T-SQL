@@ -32,4 +32,30 @@ FROM sys.dm_exec_cached_plans cp
 JOIN sys.dm_exec_query_stats qs ON cp.plan_handle = qs.plan_handle
 CROSS APPLY sys.dm_exec_sql_text(cp.plan_handle) st
 WHERE cp.objtype = 'Adhoc'
-ORDER BY total_cache_waste_mb DESC;
+ORDER BY total_cache_waste_mb DESC
+
+--大致彙總一下"可參數化"的查詢
+;WITH CTE
+AS
+(
+	SELECT
+		DB_NAME(st.dbid) AS DBName,
+		LEFT(st.text,100) AS query_text,
+		qs.execution_count,
+		(qs.execution_count * cp.size_in_bytes) / 1024 / 1024 AS total_cache_waste_mb
+	FROM sys.dm_exec_cached_plans cp
+	JOIN sys.dm_exec_query_stats qs ON cp.plan_handle = qs.plan_handle
+	CROSS APPLY sys.dm_exec_sql_text(cp.plan_handle) st
+	WHERE cp.objtype = 'Adhoc'
+)
+SELECT
+	DBName,
+	query_text,
+	SUM(execution_count) AS Total_execution_count,
+	SUM(total_cache_waste_mb) AS Total_cache_waste_mb
+FROM CTE
+GROUP BY
+	DBName,
+	query_text
+HAVING SUM(total_cache_waste_mb) > 1024
+ORDER BY Total_cache_waste_mb DESC

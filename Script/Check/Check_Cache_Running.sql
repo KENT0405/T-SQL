@@ -19,4 +19,4 @@ JOIN sys.dm_exec_sessions s ON r.session_id = s.session_id
 CROSS APPLY sys.dm_exec_sql_text(r.sql_handle) t
 WHERE r.session_id <> @@SPID
 --AND login_name = 'api_ac'
-ORDER BY r.cpu_time DESC;
+ORDER BY r.cpu_time DESC
