@@ -1,6 +1,6 @@
 SET NOCOUNT ON;
 
-DECLARE @ReportType INT = 2 --2047
+DECLARE @ReportType INT = 16 --2047
 
 DROP TABLE IF EXISTS #ReportType;
 SELECT
@@ -58,6 +58,7 @@ BEGIN
     AND CTE.Rundate >= DATEADD(DD,-2,GETDATE())
     AND result <> 'success'
     AND step_name NOT IN ('Check Replica - Secondary','Check Replica - Primary')
+    AND DB_NAME() NOT IN ('ref_data','finance_data')
     ORDER BY CTE.Rundate DESC
 END
 
@@ -108,6 +109,7 @@ BEGIN
         JOIN sys.dm_xe_session_targets b ON a.address = b.event_session_address
         WHERE a.session_source = 'server'
         AND a.name IN ('T-SQL Trace','Lock Trace')
+        AND DB_NAME() NOT IN ('ref_data','finance_data')
     )
     SELECT @SQL_Trace += '
     SELECT
@@ -125,9 +127,18 @@ BEGIN
     '
     FROM CTE
 
-    SET @SQL_Trace = LEFT(@SQL_Trace, LEN(@SQL_Trace) - 11)
+    IF @SQL_Trace = ''
+    BEGIN
+        SELECT
+            CAST(NULL AS NVARCHAR(100)) AS EventName,
+            CAST(NULL AS INT) AS [Today (CNT)],
+            CAST(NULL AS INT) AS [last_24hour (CNT)],
+            CAST(NULL AS INT) AS [last_7day (AVG)]
+        WHERE 1 = 0
+    END
+    ELSE
+        SET @SQL_Trace = LEFT(@SQL_Trace, LEN(@SQL_Trace) - 11)
 
-    --SELECT @SQL
     EXEC (@SQL_Trace)
 END
 
@@ -140,9 +151,8 @@ END
 --Space Usage
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 16)
 BEGIN
-    DECLARE
-        @SQL_shrink NVARCHAR(MAX) = '',
-        @server VARCHAR(10) = 'ALL' --ALL/SRC/TKT/OTHER
+   DECLARE
+        @SQL_shrink NVARCHAR(MAX) = ''
 
     DROP TABLE IF EXISTS #temp_shink;
     CREATE TABLE #temp_shink
@@ -181,9 +191,9 @@ BEGIN
         ''' + name + ''' AS DB_Name,
         *
         ,CONVERT(DECIMAL(5,2),[Space_Used(MB)] / [Currently_Space(MB)]) AS Rate
-        ,''USE ' + name + '
-        DBCC SHRINKFILE (N'''''' + Name + '''''' , 8) WITH NO_INFOMSGS;'' AS shrinkstr
+        ,''USE ' + name + ';  DBCC SHRINKFILE (N'''''' + Name + '''''' , 8) WITH NO_INFOMSGS;'' AS shrinkstr
         ,''
+		USE ' + name + ';
         SET NOCOUNT ON;
         DECLARE @I INT = '' + CAST([Currently_Space(MB)] AS VARCHAR) + '' --目前檔案size
 
@@ -194,49 +204,44 @@ BEGIN
 
         SET @I -= 100
 
-        END AS shrinkstr_loop
-        ''
+        END
+        '' AS shrinkstr_loop
     FROM shink
-    WHERE 1 = 1
+    WHERE [Currently_Space(MB)] > 10240 --10GB
     AND (CONVERT(DECIMAL(5,2),[Space_Used(MB)] / [Currently_Space(MB)]) < 0.7 AND [FileGroup] <> '''' ) --NDF/MDF
     OR ([Currently_Space(MB)] > 10240 AND [FileGroup] = '''')--LDF
     '
     FROM sys.databases
     WHERE database_id > 4
 
-    --SELECT @SQL_shrink
-
     EXEC (@SQL_shrink)
 
-    SET @SQL_shrink = '
     SELECT *
     FROM #temp_shink
-    WHERE 1 = 1
-    AND RIGHT(File_path,3) <> ''ldf'' --filter LDF
-    ' +
-    CASE @server
-        WHEN 'SRC' THEN '
-        AND DB_Name LIKE ''source%''
-        AND FileGroup LIKE ''%[_]'' + CAST(MONTH(DATEADD(MONTH,-2,GETDATE())) AS VARCHAR(2))
-        '
-        WHEN 'TKT' THEN '
-        AND DB_Name LIKE ''ticket%''
-        AND ([Currently_Space(MB)] <> 8 AND [Space_Used(MB)] <> 0 AND [Available_Space(MB)] <> 8)
-        AND [Currently_Space(MB)] > 10240 --10GB
-        '
-        WHEN 'OTHER' THEN '
-        AND DB_Name NOT LIKE ''source%''
-        AND DB_Name NOT LIKE ''ticket%''
-        AND ([Currently_Space(MB)] <> 8 AND [Space_Used(MB)] <> 0 AND [Available_Space(MB)] <> 8)
-        AND [Currently_Space(MB)] > 10240 --10GB
-        '
-        WHEN 'ALL' THEN '
-        AND ([Currently_Space(MB)] <> 8 AND [Space_Used(MB)] <> 0 AND [Available_Space(MB)] <> 8)
-        AND [Currently_Space(MB)] > 10240 --10GB'
-    END + '
-    ORDER BY 1,2,3,4,5
-    '
-    EXEC (@SQL_shrink)
+	WHERE 1 = 1
+	AND FileGroup <> '' --ldf
+	AND DB_Name NOT LIKE 'source%'
+	AND DB_Name NOT LIKE 'ticket%'
+
+    ;WITH T1
+    AS
+    (
+        SELECT DISTINCT
+        REPLACE(vs.volume_mount_point,':\','') AS Drive_Name ,
+        CAST(vs.total_bytes / 1024.0 / 1024 / 1024 AS NUMERIC(18,2)) AS Total_Space_GB ,
+        CAST(vs.available_bytes / 1024.0 / 1024 / 1024 AS NUMERIC(18,2)) AS Free_Space_GB
+        FROM  sys.master_files AS f
+        CROSS APPLY sys.dm_os_volume_stats(f.database_id, f.file_id) AS vs
+    )
+    SELECT
+    Drive_Name,
+    Total_Space_GB,
+    Total_Space_GB-Free_Space_GB AS Used_Space_GB,
+    Free_Space_GB,
+    CAST(Free_Space_GB*100/Total_Space_GB AS NUMERIC(18,2)) AS Free_Space_Percent
+    FROM T1
+    WHERE CAST(Free_Space_GB*100/Total_Space_GB AS NUMERIC(18,2)) <= 30
+	AND DB_NAME() NOT IN ('ref_data','finance_data')
 END
 
 --RecordSpCached Top IO
