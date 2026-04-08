@@ -157,7 +157,7 @@ BEGIN
     DROP TABLE IF EXISTS #temp_shink;
     CREATE TABLE #temp_shink
     (
-        [DB_Name] VARCHAR(30),
+        [DB_Name] VARCHAR(30),P
         [FileGroup] VARCHAR(30),
         [Name] VARCHAR(30),
         [File_path] VARCHAR(100),

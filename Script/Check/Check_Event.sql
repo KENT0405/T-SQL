@@ -20,9 +20,14 @@ SELECT
 	+ CASE WHEN EventName = 'T-SQL Trace' THEN '
 	CAST(event_data AS XML).value(''(event/action[@name="database_name"]/value)[1]'', ''NVARCHAR(100)'') AS DBName,
 	CAST(event_data AS XML).value(''(event/data[@name="object_name"]/value)[1]'', ''NVARCHAR(MAX)'') AS ObjectName,
+	CAST(event_data AS XML).value(''(event/data[@name="writes"]/value)[1]'', ''NVARCHAR(MAX)'') AS writes,
+	CAST(event_data AS XML).value(''(event/data[@name="physical_reads"]/value)[1]'', ''NVARCHAR(MAX)'') AS physical_reads,
+	CAST(event_data AS XML).value(''(event/data[@name="logical_reads"]/value)[1]'', ''NVARCHAR(MAX)'') AS logical_reads,
+	CAST(event_data AS XML).value(''(event/data[@name="duration"]/value)[1]'', ''NVARCHAR(MAX)'') AS duration,
 	CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') AS SQL_Text' ELSE '' END + '
 FROM sys.fn_xe_file_target_read_file(''' + FilePath + ''', null, null, null)
 WHERE DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) >= GETDATE() - 7
+ORDER BY DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) DESC
 '
 FROM CTE
 
