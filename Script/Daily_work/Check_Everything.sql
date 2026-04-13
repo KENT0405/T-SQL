@@ -247,7 +247,20 @@ END
 --RecordSpCached Top IO
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 32)
 BEGIN
-    SELECT 'RecordSpCached Top IO'
+    ;WITH CTE
+    AS
+    (
+        SELECT TOP 10 *
+        FROM [master]..[RecordSpCached]
+        WHERE 1 = 1
+        AND [Procedure] <> 'PROC_updatestats'
+        AND [Procedure] NOT LIKE '%backup%'
+        AND DB_NAME() NOT IN ('ref_data','finance_data')
+        ORDER BY [AVG_IO (MB)] DESC
+    )
+    SELECT *
+    FROM CTE
+    WHERE Last_Exec_Date >= CAST(GETDATE() - 1 AS DATE)
 END
 
 --Long Running Job
