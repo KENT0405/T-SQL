@@ -157,7 +157,7 @@ BEGIN
     DROP TABLE IF EXISTS #temp_shink;
     CREATE TABLE #temp_shink
     (
-        [DB_Name] VARCHAR(30),P
+        [DB_Name] VARCHAR(30),
         [FileGroup] VARCHAR(30),
         [Name] VARCHAR(30),
         [File_path] VARCHAR(100),
@@ -272,7 +272,35 @@ END
 --Non-Compliance Connection
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 128)
 BEGIN
-    SELECT 'Non-Compliance Connection'
+    DECLARE @SQL NVARCHAR(MAX) = ''
+
+    ;WITH CTE
+    AS
+    (
+        SELECT
+            a.name AS EventName,
+            CAST(b.target_data AS XML).value('(/EventFileTarget/File/@name)[1]', 'NVARCHAR(MAX)') AS FilePath
+        FROM sys.dm_xe_sessions a
+        JOIN sys.dm_xe_session_targets b ON a.address = b.event_session_address
+        WHERE a.session_source = 'server'
+        AND a.name IN ('Rd-Tool Trace')
+    )
+    SELECT @SQL += '
+    SELECT
+        ''' + EventName + ''' AS EventName,
+        DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) AS EventTime,
+        CAST(event_data AS XML).value(''(event/action[@name="username"]/value)[1]'', ''NVARCHAR(100)'') AS UserName,
+        CAST(event_data AS XML).value(''(event/data[@name="duration"]/value)[1]'', ''NVARCHAR(MAX)'') AS duration,
+        CAST(event_data AS XML).value(''(event/data[@name="batch_text"]/value)[1]'', ''NVARCHAR(MAX)'') AS batch_text
+    FROM sys.fn_xe_file_target_read_file(''' + FilePath + ''', null, null, null)
+    WHERE DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) >= GETDATE() - 7
+    AND CAST(event_data AS XML).value(''(event/action[@name="username"]/value)[1]'', ''NVARCHAR(100)'') <> ''rd_user''
+    ORDER BY DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) DESC
+    '
+    FROM CTE
+
+    --SELECT @SQL
+    EXEC (@SQL)
 END
 
 --Connection Fulled Loaded

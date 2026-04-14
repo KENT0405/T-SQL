@@ -8,6 +8,7 @@ SELECT
     r.reads,                   -- 實體讀
     r.writes,                  -- 寫入
     r.total_elapsed_time,      -- 執行時間
+    OBJECT_NAME(t.objectid) AS Proc_Name,
     SUBSTRING(t.text, r.statement_start_offset/2,
         (CASE WHEN r.statement_end_offset = -1
             THEN LEN(t.text)
