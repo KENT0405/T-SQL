@@ -322,40 +322,74 @@ END
 --Partition Check
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 1024)
 BEGIN
-    ;WITH CTE
-    AS
+    DECLARE @SQL_Check_Partition NVARCHAR(MAX) = ''
+
+    DROP TABLE IF EXISTS #Temp_Check_Partition
+    CREATE TABLE #Temp_Check_Partition
     (
-        SELECT
-            OBJECT_NAME(p.object_id) AS TableName,
-            p.partition_number,
-            prv_left.value AS LowerBoundary,
-            prv_right.value AS UpperBoundary,
-            LAG(prv_right.value) OVER (PARTITION BY p.object_id ORDER BY p.partition_number) AS PrevUpperBoundary
-        FROM sys.dm_db_partition_stats p
-        INNER JOIN sys.indexes i ON i.object_id = p.object_id AND i.index_id = p.index_id
-        INNER JOIN sys.partition_schemes ps ON ps.data_space_id = i.data_space_id
-        LEFT JOIN sys.partition_range_values prv_right ON prv_right.function_id = ps.function_id AND prv_right.boundary_id = p.partition_number
-        LEFT JOIN sys.partition_range_values prv_left ON prv_left.function_id = ps.function_id AND prv_left.boundary_id = p.partition_number - 1
-        WHERE p.index_id < 2
+        DBname VARCHAR(100),
+        TableName VARCHAR(100),
+        PartitionNumber INT,
+		PartitionScheme VARCHAR(100),
+		PartitionFunction VARCHAR(100),
+        LowerBoundary DATETIME,
+        UpperBoundary DATETIME
     )
-    SELECT *
-    FROM CTE
+
+    SELECT @SQL_Check_Partition += N'
+    INSERT INTO #Temp_Check_Partition
+    SELECT
+        ''' + name + ''',
+        OBJECT_NAME(p.object_id,' + CAST(database_id AS VARCHAR(10)) + ') AS TableName,
+        p.partition_number AS PartitionNumber,
+		ps.name AS PartitionScheme,
+		pf.name AS PartitionFunction,
+        CAST(prv_left.value AS DATETIME) AS LowerBoundary,
+        CAST(prv_right.value AS DATETIME) AS UpperBoundary
+    FROM ' + name + '.sys.dm_db_partition_stats p
+    INNER JOIN ' + name + '.sys.indexes i ON i.object_id = p.object_id AND i.index_id = p.index_id
+    INNER JOIN ' + name + '.sys.partition_schemes ps ON ps.data_space_id = i.data_space_id
+	INNER JOIN ' + name + '.sys.partition_functions pf ON ps.function_id = pf.function_id
+    LEFT JOIN ' + name + '.sys.partition_range_values prv_right ON prv_right.function_id = ps.function_id AND prv_right.boundary_id = p.partition_number
+    LEFT JOIN ' + name + '.sys.partition_range_values prv_left ON prv_left.function_id = ps.function_id AND prv_left.boundary_id = p.partition_number - 1
+    WHERE p.index_id < 2 --( 0:堆積 / 1:叢集索引 / >1:非叢集索引 )
+    '
+    FROM sys.databases
+    WHERE database_id > 4
+    AND DB_NAME() NOT IN ('ref_data','finance_data')
+
+    --SELECT @SQL_Check_Partition
+    EXEC (@SQL_Check_Partition)
+
+	;WITH CTE
+	AS
+	(
+		SELECT
+			DBname,
+			TableName,
+			CASE WHEN COUNT(*) = COUNT(CASE WHEN DAY(LowerBoundary) = 1 THEN 1 END) THEN 'Monthly' ELSE 'Daily' END AS PartitionType
+		FROM #Temp_Check_Partition
+		WHERE LowerBoundary IS NOT NULL
+		GROUP BY DBname,TableName
+	)
+    SELECT DISTINCT
+		a.DBname,
+		a.PartitionScheme,
+		a.PartitionFunction,
+		a.LowerBoundary,
+		a.UpperBoundary,
+		c.PartitionType,
+		IIF(a.UpperBoundary IS NULL,'Invalid max boundary','Non-continuous range') AS Result
+    FROM #Temp_Check_Partition AS a
+	JOIN CTE AS c ON a.DBname = c.DBname AND a.TableName = c.TableName
     WHERE
-
-    --排除連續區間
-    NOT (
-        (LowerBoundary = PrevUpperBoundary)
-        OR (LowerBoundary IS NULL AND PrevUpperBoundary IS NULL)
-    )
-    AND LowerBoundary IS NOT NULL
-
-    --排除 MaxBoundary
-    AND NOT (
-        (
-            LowerBoundary = 59 --ByMinute
-            OR LowerBoundary = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) --ByMounth
-            OR LowerBoundary = EOMONTH(GETDATE()) --ByDay
-        )
-        AND UpperBoundary IS NULL
-    )
+	UpperBoundary <>
+	CASE c.PartitionType
+		WHEN 'Monthly' THEN DATEADD(MONTH,1,LowerBoundary)
+		WHEN 'Daily' THEN DATEADD(DAY,1,LowerBoundary)
+	END --Non-continuous range
+    OR (a.LowerBoundary < DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) AND c.PartitionType = 'Monthly' AND a.UpperBoundary IS NULL) --Invalid max boundary
+	OR (a.LowerBoundary < EOMONTH(GETDATE()) AND c.PartitionType = 'Daily' AND a.UpperBoundary IS NULL AND a.LowerBoundary <> DATEADD(DAY, 6, DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()) + 1, 0))) --Invalid max boundary
+    AND a.LowerBoundary > '1900-12-31 00:00:00.000' --column type is number
+    ORDER BY 1,2,3
 END
