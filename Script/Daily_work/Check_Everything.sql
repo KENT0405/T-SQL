@@ -151,8 +151,7 @@ END
 --Space Usage
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 16)
 BEGIN
-   DECLARE
-        @SQL_shrink NVARCHAR(MAX) = ''
+   DECLARE @SQL_shrink NVARCHAR(MAX) = ''
 
     DROP TABLE IF EXISTS #temp_shink;
     CREATE TABLE #temp_shink
@@ -306,7 +305,12 @@ END
 --Connection Fulled Loaded
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 256)
 BEGIN
-    SELECT 'Connection Fulled Loaded'
+    SELECT TOP 10
+        [log_time],
+        COUNT([log_time]) AS Connect_Count
+    FROM [master].[dbo].[TB_Conn_FulledLoaded_Log]
+    GROUP BY [log_time]
+    ORDER BY [log_time] DESC
 END
 
 --Recently Modify Obejct
@@ -318,5 +322,40 @@ END
 --Partition Check
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 1024)
 BEGIN
-    SELECT 'Partition Check'
+    ;WITH CTE
+    AS
+    (
+        SELECT
+            OBJECT_NAME(p.object_id) AS TableName,
+            p.partition_number,
+            prv_left.value AS LowerBoundary,
+            prv_right.value AS UpperBoundary,
+            LAG(prv_right.value) OVER (PARTITION BY p.object_id ORDER BY p.partition_number) AS PrevUpperBoundary
+        FROM sys.dm_db_partition_stats p
+        INNER JOIN sys.indexes i ON i.object_id = p.object_id AND i.index_id = p.index_id
+        INNER JOIN sys.partition_schemes ps ON ps.data_space_id = i.data_space_id
+        LEFT JOIN sys.partition_range_values prv_right ON prv_right.function_id = ps.function_id AND prv_right.boundary_id = p.partition_number
+        LEFT JOIN sys.partition_range_values prv_left ON prv_left.function_id = ps.function_id AND prv_left.boundary_id = p.partition_number - 1
+        WHERE p.index_id < 2
+    )
+    SELECT *
+    FROM CTE
+    WHERE
+
+    --排除連續區間
+    NOT (
+        (LowerBoundary = PrevUpperBoundary)
+        OR (LowerBoundary IS NULL AND PrevUpperBoundary IS NULL)
+    )
+    AND LowerBoundary IS NOT NULL
+
+    --排除 MaxBoundary
+    AND NOT (
+        (
+            LowerBoundary = 59 --ByMinute
+            OR LowerBoundary = DATEFROMPARTS(YEAR(GETDATE()), MONTH(GETDATE()), 1) --ByMounth
+            OR LowerBoundary = EOMONTH(GETDATE()) --ByDay
+        )
+        AND UpperBoundary IS NULL
+    )
 END
