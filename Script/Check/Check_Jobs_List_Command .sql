@@ -11,6 +11,7 @@ FROM msdb..sysjobs AS jobs
 INNER JOIN msdb..sysjobsteps AS steps ON jobs.job_id = steps.job_id
 WHERE 1 = 1
 --AND jobs.name LIKE '%JOBS_Sync_Table%'
+--AND steps.step_name LIKE '%PROC_JobCleanSub%'
 --AND command LIKE '%Procedure_Name%'
 ORDER BY JobName, StepID
 
