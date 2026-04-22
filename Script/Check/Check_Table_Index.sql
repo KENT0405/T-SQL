@@ -29,6 +29,8 @@ SELECT
         WHEN p.[data_compression] = 0 THEN 'NONE'
         WHEN p.[data_compression] = 1 THEN 'ROW'
         WHEN p.[data_compression] = 2 THEN 'PAGE'
+        WHEN p.[data_compression] = 3 THEN 'COLUMNSTORE'
+        WHEN p.[data_compression] = 4 THEN 'COLUMNSTORE_ARCHIVE'
     END [data_compression]
 FROM sys.tables AS t
 INNER JOIN sys.indexes AS i ON t.object_id = i.object_id
