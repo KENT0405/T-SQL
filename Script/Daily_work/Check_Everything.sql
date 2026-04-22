@@ -87,7 +87,7 @@ BEGIN
 		WHERE rn <= 8
 		FOR XML PATH('')),1,1,'') +
 	', ' + COALESCE((SELECT col_name FROM CTE WHERE rn = 9), '''''') + ' AS ERRORDATABASE,
-	''USE [' + IIF(DB_NAME() <> 'idc_repl',DB_NAME(), ''' + ERRORDATABASE + ''') + ']; DELETE ' + (SELECT TOP 1 table_name FROM CTE) + ' WHERE sn = '' + CAST(' + IIF(DB_NAME() IN ('af_data','ref_data'),'id','sn') + ' AS VARCHAR) AS delete_str
+	''USE [' + IIF(DB_NAME() <> 'idc_repl',DB_NAME(), ''' + ERRORDATABASE + ''') + ']; DELETE ' + (SELECT TOP 1 table_name FROM CTE) + ' WHERE ' + IIF(DB_NAME() IN ('af_data','ref_data'),'id','sn') + ' = '' + CAST(' + IIF(DB_NAME() IN ('af_data','ref_data'),'id','sn') + ' AS VARCHAR) AS delete_str
 	FROM ' + (SELECT TOP 1 table_name FROM CTE) + ' WITH(NOLOCK)
     WHERE @@SERVERNAME NOT IN (''IC-BO-DB-02'',''IC-DBPMT-002'') '
 
