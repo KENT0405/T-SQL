@@ -26,6 +26,7 @@ SELECT
 		CAST(event_data AS XML).value(''(event/data[@name="physical_reads"]/value)[1]'', ''NVARCHAR(MAX)'') AS physical_reads,
 		CAST(event_data AS XML).value(''(event/data[@name="logical_reads"]/value)[1]'', ''NVARCHAR(MAX)'') AS logical_reads,
 		CAST(event_data AS XML).value(''(event/data[@name="duration"]/value)[1]'', ''NVARCHAR(MAX)'') AS duration,
+		CAST(event_data AS XML).value(''(event/data[@name="result"]/text)[1]'', ''NVARCHAR(MAX)'') AS result,
 		CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') AS SQL_Text,
 		CAST(event_data AS XML)'
 		WHEN 'Rd-Tool Trace' THEN '
