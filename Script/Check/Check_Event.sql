@@ -9,7 +9,7 @@ AS
 	FROM sys.dm_xe_sessions a
 	JOIN sys.dm_xe_session_targets b ON a.address = b.event_session_address
 	WHERE a.session_source = 'server'
-	AND a.name IN ('Rd-Tool Trace') --(T-SQL Trace / Lock Trace / Rd-Tool Trace)
+	AND a.name IN ('T-SQL Trace') --(T-SQL Trace / Lock Trace / Rd-Tool Trace)
 )
 SELECT @SQL += '
 SELECT
@@ -45,7 +45,7 @@ SELECT
 		CAST(event_data AS XML).value(''(event/action[@name="client_pid"]/value)[1]'', ''NVARCHAR(100)'') AS client_pid'
 	END + '
 FROM sys.fn_xe_file_target_read_file(''' + FilePath + ''', null, null, null)
-WHERE DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) >= GETDATE() - 7
+WHERE DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) >= GETDATE() - 30
 ORDER BY DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) DESC
 '
 FROM CTE
