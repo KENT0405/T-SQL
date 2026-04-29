@@ -146,7 +146,17 @@ END
 --Unclosed Profiler
 IF EXISTS (SELECT 1 FROM #ReportType WHERE id = 8)
 BEGIN
-    SELECT 'Unclosed Profiler'
+    SELECT
+        t.id,
+        t.start_time,
+        s.session_id,
+        s.login_name,
+        s.host_name,
+        s.program_name,
+        'EXEC sp_trace_setstatus ' + CAST(t.id AS VARCHAR(10))+ ', 0;' AS Stop_Profiler
+    FROM sys.traces t
+    LEFT JOIN sys.dm_exec_sessions s ON s.program_name LIKE '%Profiler%'
+    WHERE is_default <> 1
 END
 
 --Space Usage
