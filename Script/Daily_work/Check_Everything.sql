@@ -153,8 +153,7 @@ BEGIN
         s.login_name,
         s.host_name,
         s.program_name,
-        'EXEC sp_trace_setstatus ' + CAST(t.id AS VARCHAR(10))+ ', 0;' AS Stop_Profiler,
-        'EXEC sp_trace_setstatus ' + CAST(t.id AS VARCHAR(10))+ ', 2;' AS Delete_Profiler
+        'EXEC sp_trace_setstatus ' + CAST(t.id AS VARCHAR(10))+ ', 0; EXEC sp_trace_setstatus ' + CAST(t.id AS VARCHAR(10))+ ', 2;' AS Close_Profiler
     FROM sys.traces t
     LEFT JOIN sys.dm_exec_sessions s ON s.program_name LIKE '%Profiler%'
     WHERE is_default <> 1
