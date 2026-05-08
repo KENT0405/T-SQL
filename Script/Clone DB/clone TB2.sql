@@ -2,7 +2,8 @@ DECLARE
 	@SQL_TB NVARCHAR(MAX) = '',
 	@SQL_CS NVARCHAR(MAX) = '',
     @SQL_TB_End NVARCHAR(MAX) = '',
-	@TB_name VARCHAR(200) = 'Orders2' --TB_SourceDataBSS_Main
+    @SQL_DF NVARCHAR(MAX) = '',
+	@TB_name VARCHAR(200) = 'orders' --TB_SourceDataBSS_Main
 
 -- TABLE COLUMN
 SELECT
@@ -21,7 +22,7 @@ SELECT
 	ELSE '' END +
 	CASE WHEN ac.is_identity = 1 THEN ' IDENTITY(' + CAST(ic.seed_value AS VARCHAR(5)) + ',' + CAST(ic.increment_value AS VARCHAR(5)) + ')' ELSE '' END +
 	CASE WHEN ic.is_not_for_replication = 1 THEN ' NOT FOR REPLICATION' ELSE '' END +
-	CASE WHEN ac.is_computed = 1 THEN ' AS ' + cc.definition + IIF(cc.is_persisted = 1,' PERSISTED ','') ELSE '' END +
+	CASE WHEN ac.is_computed = 1 THEN ' AS ' + cc.definition + IIF(cc.is_persisted = 1,' PERSISTED','') ELSE '' END +
 	CASE WHEN isc.is_nullable = 'NO' THEN ' NOT NULL,' ELSE ' NULL,' END + CHAR(10)
 FROM information_schema.columns isc
 INNER JOIN sys.tables tb ON isc.table_name = tb.name
@@ -67,14 +68,11 @@ BEGIN
         SELECT
             b.constraint_name,
             STUFF((
-                SELECT ',' + QUOTENAME(c.name) +
-                       CASE WHEN ic.is_descending_key = 1 THEN ' DESC' ELSE ' ASC' END
+                SELECT ', ' + QUOTENAME(c.name) + CASE WHEN ic.is_descending_key = 1 THEN ' DESC' ELSE ' ASC' END
                 FROM sys.index_columns ic
-                JOIN sys.columns c
-                    ON ic.object_id = c.object_id
-                    AND ic.column_id = c.column_id
+                JOIN sys.columns c ON ic.object_id = c.object_id AND ic.column_id = c.column_id
                 WHERE ic.object_id = b.parent_object_id
-                  AND ic.index_id = b.index_id
+                AND ic.index_id = b.index_id
                 ORDER BY ic.key_ordinal
                 FOR XML PATH('')), 1, 1, '') AS IndexColumns
         FROM base b
@@ -103,23 +101,37 @@ BEGIN
             WHEN b.is_primary_key = 1 THEN 'PRIMARY KEY '
             WHEN b.is_unique_constraint = 1 THEN 'UNIQUE '
             ELSE ''
-        END + b.type_desc + '
-        (
-            ' + c.IndexColumns + '
-        ) WITH (PAD_INDEX = ' + CASE WHEN b.is_padded = 1 THEN 'ON' ELSE 'OFF' END +
+        END + b.type_desc + CHAR(10) +
+        '( ' + CHAR(10) +
+        CHAR(9) + c.IndexColumns + CHAR(10) +
+        ') WITH (PAD_INDEX = ' + CASE WHEN b.is_padded = 1 THEN 'ON' ELSE 'OFF' END +
         ', IGNORE_DUP_KEY = ' + CASE WHEN b.ignore_dup_key = 1 THEN 'ON' ELSE 'OFF' END +
         ', ALLOW_ROW_LOCKS = ' + CASE WHEN b.allow_row_locks = 1 THEN 'ON' ELSE 'OFF' END +
         ', ALLOW_PAGE_LOCKS = ' + CASE WHEN b.allow_page_locks = 1 THEN 'ON' ELSE 'OFF' END +
         ', FILLFACTOR = ' + CASE WHEN b.fill_factor = 0 THEN '100' ELSE CAST(b.fill_factor AS NVARCHAR(3)) END +
         ', OPTIMIZE_FOR_SEQUENTIAL_KEY = ' + CASE WHEN b.optimize_for_sequential_key = 1 THEN 'ON' ELSE 'OFF' END +
         ', DATA_COMPRESSION = ' + CASE comp.data_compression WHEN 0 THEN 'NONE' WHEN 1 THEN 'ROW' ELSE 'PAGE' END + ') ' + f.on_clause + ',' + CHAR(10),
-        @SQL_TB_End = ') ' + f.on_clause
+        @SQL_TB_End = CHAR(10) + ') ' + f.on_clause + CHAR(10) + 'GO'
     FROM base b
     JOIN cols c ON b.constraint_name = c.constraint_name
     JOIN fg f ON b.constraint_name = f.constraint_name
     LEFT JOIN compression comp ON b.parent_object_id = comp.object_id AND b.index_id = comp.index_id;
 END
 
+--COLUMN DEFAULT VALUES
+IF EXISTS(SELECT 1 FROM sys.all_columns WHERE default_object_id <> 0 AND OBJECT_NAME(object_id) = @TB_name)
+BEGIN
+	SELECT @SQL_DF += CHAR(10) + 'ALTER TABLE [dbo].' + QUOTENAME(@TB_name) +
+    ' ADD CONSTRAINT ' + QUOTENAME(dc.name) +
+    ' DEFAULT ' + dc.definition +
+    ' FOR ' + QUOTENAME(c.name) +
+    CHAR(10) + 'GO'
+	FROM sys.default_constraints dc
+	JOIN sys.columns c ON dc.parent_object_id = c.object_id AND dc.parent_column_id = c.column_id
+	WHERE OBJECT_NAME(c.object_id) = @TB_name
+END
+
 --SELECT @SQL_TB
-SELECT @SQL_CS
-SELECT @SQL_TB + LEFT(@SQL_CS, LEN(@SQL_CS) - 1) + @SQL_TB_End
+--SELECT @SQL_CS
+--SELECT @SQL_DF
+--SELECT @SQL_TB + LEFT(@SQL_CS, LEN(@SQL_CS) - 2) + @SQL_TB_End + CHAR(10) + @SQL_DF
