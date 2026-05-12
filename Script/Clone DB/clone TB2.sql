@@ -3,7 +3,9 @@ DECLARE
 	@SQL_CS NVARCHAR(MAX) = '',
     @SQL_TB_End NVARCHAR(MAX) = '',
     @SQL_DF NVARCHAR(MAX) = '',
-	@TB_name VARCHAR(200) = 'orders' --TB_SourceDataBSS_Main
+    @SQL_FK NVARCHAR(MAX) = '',
+    @SQL_CK NVARCHAR(MAX) = '',
+	@TB_name VARCHAR(200) = 'mem_credit' --TB_SourceDataBSS_Main
 
 -- TABLE COLUMN
 SELECT
@@ -49,7 +51,6 @@ BEGIN
             i.allow_row_locks,
             i.allow_page_locks,
             i.fill_factor,
-            i.optimize_for_sequential_key,
             i.data_space_id
         FROM sys.key_constraints kc
         JOIN sys.indexes i ON i.object_id = kc.parent_object_id AND i.name = kc.name
@@ -109,7 +110,6 @@ BEGIN
         ', ALLOW_ROW_LOCKS = ' + CASE WHEN b.allow_row_locks = 1 THEN 'ON' ELSE 'OFF' END +
         ', ALLOW_PAGE_LOCKS = ' + CASE WHEN b.allow_page_locks = 1 THEN 'ON' ELSE 'OFF' END +
         ', FILLFACTOR = ' + CASE WHEN b.fill_factor = 0 THEN '100' ELSE CAST(b.fill_factor AS NVARCHAR(3)) END +
-        ', OPTIMIZE_FOR_SEQUENTIAL_KEY = ' + CASE WHEN b.optimize_for_sequential_key = 1 THEN 'ON' ELSE 'OFF' END +
         ', DATA_COMPRESSION = ' + CASE comp.data_compression WHEN 0 THEN 'NONE' WHEN 1 THEN 'ROW' ELSE 'PAGE' END + ') ' + f.on_clause + ',' + CHAR(10),
         @SQL_TB_End = CHAR(10) + ') ' + f.on_clause + CHAR(10) + 'GO'
     FROM base b
@@ -118,10 +118,10 @@ BEGIN
     LEFT JOIN compression comp ON b.parent_object_id = comp.object_id AND b.index_id = comp.index_id;
 END
 
---COLUMN DEFAULT VALUES
+-- COLUMN DEFAULT CONSTRAINTS
 IF EXISTS(SELECT 1 FROM sys.all_columns WHERE default_object_id <> 0 AND OBJECT_NAME(object_id) = @TB_name)
 BEGIN
-	SELECT @SQL_DF += CHAR(10) + 'ALTER TABLE [dbo].' + QUOTENAME(@TB_name) +
+	SELECT @SQL_DF += CHAR(10) + 'ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(dc.object_id)) + '.' + QUOTENAME(@TB_name) +
     ' ADD CONSTRAINT ' + QUOTENAME(dc.name) +
     ' DEFAULT ' + dc.definition +
     ' FOR ' + QUOTENAME(c.name) +
@@ -131,7 +131,42 @@ BEGIN
 	WHERE OBJECT_NAME(c.object_id) = @TB_name
 END
 
+-- FOREIGN KEYS
+IF EXISTS(SELECT 1 FROM sys.foreign_keys WHERE OBJECT_NAME(parent_object_id) = @TB_name)
+BEGIN
+    SELECT @SQL_FK += CHAR(10) + 'ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(fk.parent_object_id)) + '.' + QUOTENAME(@TB_name) + CHAR(32) + CHAR(32) +
+    'WITH ' + IIF(fk.is_not_trusted = 0,'CHECK','NOCHECK') + ' ADD  CONSTRAINT ' + QUOTENAME(fk.name) + CHAR(32) +
+    'FOREIGN KEY(' + QUOTENAME(cp.name) + ')' + CHAR(10) +
+    'REFERENCES ' + QUOTENAME(OBJECT_SCHEMA_NAME(fk.referenced_object_id)) + '.' + QUOTENAME(OBJECT_NAME(fk.referenced_object_id)) + CHAR(32) + '(' + QUOTENAME(cr.name) + ')' +
+    CHAR(10) + 'GO' + CHAR(10) +
+    CHAR(10) + 'ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(fk.parent_object_id)) + '.' + QUOTENAME(@TB_name) + CHAR(32) +
+    IIF(fk.is_disabled = 0,'CHECK','NOCHECK') + ' CONSTRAINT ' + QUOTENAME(fk.name) +
+    CHAR(10) + 'GO' + CHAR(10)
+    FROM sys.foreign_keys fk
+    JOIN sys.foreign_key_columns fkc ON fk.object_id = fkc.constraint_object_id
+    JOIN sys.columns cp ON fkc.parent_object_id = cp.object_id AND fkc.parent_column_id = cp.column_id
+    JOIN sys.columns cr ON fkc.referenced_object_id = cr.object_id AND fkc.referenced_column_id = cr.column_id
+    WHERE OBJECT_NAME(fk.parent_object_id) = @TB_name
+END
+
+-- COLUMN CHECK CONSTRAINT
+IF EXISTS(SELECT 1 FROM sys.check_constraints WHERE OBJECT_NAME(parent_object_id) = @TB_name)
+BEGIN
+    SELECT @SQL_CK += CHAR(10) + 'ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(cc.parent_object_id)) + '.' + QUOTENAME(@TB_name) + CHAR(32) + CHAR(32) +
+    'WITH ' + IIF(cc.is_not_trusted = 0,'CHECK','NOCHECK') + ' ADD  CONSTRAINT ' + QUOTENAME(cc.name) + CHAR(32) +
+    'CHECK  ' + cc.definition +
+    CHAR(10) + 'GO' + CHAR(10) +
+    CHAR(10) + 'ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(cc.parent_object_id)) + '.' + QUOTENAME(@TB_name) + CHAR(32) +
+    IIF(cc.is_disabled = 0,'CHECK','NOCHECK') + ' CONSTRAINT ' + QUOTENAME(cc.name) +
+    CHAR(10) + 'GO' + CHAR(10)
+    FROM sys.check_constraints cc
+    JOIN sys.columns c ON cc.parent_object_id = c.object_id AND cc.parent_column_id = c.column_id
+    WHERE OBJECT_NAME(cc.parent_object_id) = @TB_name
+END
+
 --SELECT @SQL_TB
 --SELECT @SQL_CS
 --SELECT @SQL_DF
---SELECT @SQL_TB + LEFT(@SQL_CS, LEN(@SQL_CS) - 2) + @SQL_TB_End + CHAR(10) + @SQL_DF
+--SELECT @SQL_FK
+--SELECT @SQL_CK
+SELECT @SQL_TB + LEFT(@SQL_CS, LEN(@SQL_CS) - 2) + @SQL_TB_End + CHAR(10) + @SQL_DF + CHAR(10) + @SQL_FK + @SQL_CK
