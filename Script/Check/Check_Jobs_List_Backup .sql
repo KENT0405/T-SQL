@@ -1,3 +1,69 @@
+DROP TABLE IF EXISTS #OS_Job_List, #OsJob_Freq, #OsJob_Keepday;
+CREATE TABLE #OS_Job_List
+(
+	output VARCHAR(4000)
+)
+
+INSERT INTO #OS_Job_List
+EXEC xp_cmdshell 'schtasks /query /tn "\delbak" /fo LIST /v'
+
+IF(@@SERVERNAME LIKE '%PMT%')
+BEGIN
+	INSERT INTO #OS_Job_List
+	EXEC xp_cmdshell 'type "E:\OS_Jobs\delbakfile.bat"'
+END
+ELSE
+BEGIN
+	INSERT INTO #OS_Job_List
+	EXEC xp_cmdshell 'type "D:\OS_Jobs\delbakfile.bat"'
+END
+
+--OsJob_Freq
+SELECT
+    MAX(IIF(output LIKE '%Days%', LTRIM(REPLACE(output,'Days:','')),''))
+	+ ' at ' +
+    MAX(IIF(output LIKE '%Start Time%', LTRIM(REPLACE(output,'Start Time:','')),''))
+AS OsJob_Freq
+INTO #OsJob_Freq
+FROM #OS_Job_List
+
+--OsJob_Keepday
+;WITH CTE
+AS
+(
+SELECT
+	output,
+	CASE
+		WHEN value LIKE '%p "D:\BAK\%' THEN UPPER(REPLACE(REPLACE(value,'p "D:\BAK\',''),'"',''))
+		WHEN value LIKE '%p "E:\BAK\%' THEN UPPER(REPLACE(REPLACE(value,'p "E:\BAK\',''),'"',''))
+		WHEN value LIKE '%.bak%' THEN '_' + REPLACE(REPLACE(REPLACE(value,'"',''),'.bak',''),'m ','')
+		WHEN value LIKE '%d -%' THEN ': ' + REPLACE(value,'d -','') + 'day'
+	END path_value
+FROM #OS_Job_List
+CROSS APPLY STRING_SPLIT(output, '/')
+WHERE value LIKE '%d -%'
+OR value LIKE '%p "D:\BAK\%'
+OR value LIKE '%p "E:\BAK\%'
+OR value LIKE '%.bak%'
+), CTE2
+AS
+(
+SELECT
+    STUFF((
+        SELECT path_value
+        FROM CTE b
+        WHERE a.output = b.output
+        FOR XML PATH(''), TYPE
+    ).value('.', 'varchar(max)')
+    ,1,0,'') AS Result
+FROM CTE a
+GROUP BY output
+)
+SELECT TOP 1 STUFF((SELECT ' || ' + Result FROM CTE2 FOR XML PATH('')),1,4,'') AS OsJob_Keepday
+INTO #OsJob_Keepday
+FROM CTE2
+
+--SQLServer_backup_job_list
 ;WITH backup_job
 AS
 (
@@ -184,3 +250,5 @@ PIVOT
     MAX(frequency)
     FOR backup_type IN ([full], [diff], [log])
 ) AS pt
+CROSS APPLY #OsJob_Freq
+CROSS APPLY #OsJob_Keepday
