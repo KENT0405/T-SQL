@@ -1,8 +1,8 @@
 DECLARE
 	@tracefile NVARCHAR(256) = N'D:\ProfilerTrace\test',
 	@EventCategoryName NVARCHAR(MAX) = 'Stored Procedures / TSQL', --(Stored Procedures / TSQL)
-	@EventClassName NVARCHAR(MAX) = 'RPC:Completed', --(RPC:Completed / RPC:Starting / SP:StmtCompleted / SP:StmtStarting / SQL:BatchCompleted / SQL:BatchStarting)
-	@Filter_Parameters NVARCHAR(100) = 'TextData,OR,LIKE,%PROC_tranlist_get%', --ex:(TextData,OR,LIKE,%PROC_tranlist_get% / LoginName,AND,=,gino)
+	@EventClassName NVARCHAR(MAX) = 'SQL:BatchCompleted', --(RPC:Completed / RPC:Starting / SP:StmtCompleted / SP:StmtStarting / SQL:BatchCompleted / SQL:BatchStarting)
+	@Filter_Parameters NVARCHAR(100) = 'TextData,OR,LIKE,%PROC_tranlist_get% / LoginName,and,=,Kent / TextData,OR,LIKE,%PROC_playerlist_get% ', --ex:(TextData,OR,LIKE,%PROC_tranlist_get% / LoginName,AND,=,gino)
 
 	--Delete File (Close : 1)
 	@Delete_File BIT = 0
@@ -86,6 +86,7 @@ BEGIN
 	DECLARE cur CURSOR FOR
 	SELECT FilterText
 	FROM @Filters
+	ORDER BY 1
 
 	OPEN cur
 
@@ -141,6 +142,7 @@ BEGIN
 	CLOSE cur
 	DEALLOCATE cur
 
+	--SELECT @SQL_Filter
 	EXEC (@SQL_Filter)
 
 	-- Set the trace status to start
