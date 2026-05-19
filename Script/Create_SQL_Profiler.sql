@@ -1,8 +1,11 @@
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 DECLARE
-	@tracefile NVARCHAR(256) = N'D:\ProfilerTrace\test',
+	@TraceFile NVARCHAR(256) = N'D:\ProfilerTrace\test',
 	@EventCategoryName NVARCHAR(MAX) = 'Stored Procedures / TSQL', --(Stored Procedures / TSQL)
-	@EventClassName NVARCHAR(MAX) = 'SQL:BatchCompleted', --(RPC:Completed / RPC:Starting / SP:StmtCompleted / SP:StmtStarting / SQL:BatchCompleted / SQL:BatchStarting)
-	@Filter_Parameters NVARCHAR(100) = 'TextData,OR,LIKE,%PROC_tranlist_get% / LoginName,and,=,Kent / TextData,OR,LIKE,%PROC_playerlist_get% ', --ex:(TextData,OR,LIKE,%PROC_tranlist_get% / LoginName,AND,=,gino)
+	@EventClassName NVARCHAR(MAX) = 'RPC:Completed', --(RPC:Completed / RPC:Starting / SP:StmtCompleted / SP:StmtStarting / SQL:BatchCompleted / SQL:BatchStarting)
+	@FilterParameters NVARCHAR(100) = 'TextData,OR,LIKE,%PROC_tranlist_get%', --(TextData,OR,LIKE,%PROC_tranlist_get% / LoginName,AND,=,gino)
 
 	--Delete File (Close : 1)
 	@Delete_File BIT = 0
@@ -13,7 +16,7 @@ DECLARE
 DECLARE
 	@FileExists INT,
 	@SQL NVARCHAR(MAX) = '',
-	@File NVARCHAR(256) = @tracefile + '.trc'
+	@File NVARCHAR(256) = @TraceFile + '.trc'
 
 EXEC master.dbo.xp_fileexist @File, @FileExists OUTPUT
 
@@ -34,6 +37,7 @@ BEGIN
 		CPU,
 		TextData
 	FROM fn_trace_gettable(@File,DEFAULT)
+	WHERE DatabaseName IS NOT NULL
 END
 ELSE IF (@FileExists = 0 AND @Delete_File = 0)
 BEGIN
@@ -45,7 +49,7 @@ BEGIN
 	EXEC sp_trace_create
 		@TraceID OUTPUT,
 		@options = 2,
-		@tracefile = @tracefile,
+		@tracefile = @TraceFile,
 		@maxfilesize = @maxfilesize,
 		@stoptime = NULL,
 		@filecount = 2
@@ -81,7 +85,7 @@ BEGIN
 
 	INSERT INTO @Filters
 	SELECT '["' + REPLACE(LTRIM(RTRIM(value)), ',', '","') + '"]'
-	FROM STRING_SPLIT(@Filter_Parameters, '/')
+	FROM STRING_SPLIT(@FilterParameters, '/')
 
 	DECLARE cur CURSOR FOR
 	SELECT FilterText
@@ -151,9 +155,7 @@ BEGIN
 	PRINT @TraceID
 END
 
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+--Close the trace if exists
 IF (@FileExists = 1 AND @Delete_File = 1)
 BEGIN
 	SELECT @SQL += 'EXEC sp_trace_setstatus ' + CAST(t.id AS VARCHAR(10))+ ', 0;' + CHAR(10) + 'EXEC sp_trace_setstatus ' + CAST(t.id AS VARCHAR(10))+ ', 2;'
