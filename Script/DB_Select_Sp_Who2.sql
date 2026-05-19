@@ -18,6 +18,7 @@ CREATE TABLE #sp_who2_results
 
 INSERT INTO #sp_who2_results EXEC sp_who2
 
+--查詢正在執行的SPID及其相關資訊
 SELECT
 	s.SPID,
 	s.[Status],
@@ -40,6 +41,7 @@ AND S.SPID > 50
 AND S.SPID <> @@SPID
 AND S.Status NOT IN ('sleeping','BACKGROUND')
 
+--刪除重複的SPID，保留最新的紀錄
 ;WITH SS
 AS
 (
@@ -53,6 +55,7 @@ WHERE R > 1
 OR SPID <= 50
 OR Status = 'BACKGROUND'
 
+--查詢被鎖定的SPID及其鎖定鏈
 ;WITH tree_who2
 AS
 (
@@ -89,3 +92,24 @@ OUTER APPLY sys.dm_exec_input_buffer(s.SPID,NULL) AS ib
 OUTER APPLY sys.dm_exec_sql_text(ps.sql_handle) sqltext
 ORDER BY location
 OPTION (MAXRECURSION 0)
+
+-- 查詢正在執行且持續時間大於兩分鐘的交易
+SELECT
+	s.session_id,
+	DB_NAME(dt.database_id) AS database_name,
+	s.login_name,
+	s.host_name,
+	s.program_name,
+	at.name AS transaction_name,
+	at.transaction_begin_time,
+	r.status,
+	r.command,
+	txt.text AS sql_text
+FROM sys.dm_tran_active_transactions at
+JOIN sys.dm_tran_session_transactions st ON at.transaction_id = st.transaction_id
+JOIN sys.dm_exec_sessions s ON st.session_id = s.session_id
+LEFT JOIN sys.dm_exec_requests r ON s.session_id = r.session_id
+LEFT JOIN sys.dm_tran_database_transactions dt ON at.transaction_id = dt.transaction_id
+OUTER APPLY sys.dm_exec_sql_text(r.sql_handle) txt
+WHERE at.transaction_begin_time < DATEADD(MINUTE,-2,GETDATE())
+ORDER BY 1,3,4
