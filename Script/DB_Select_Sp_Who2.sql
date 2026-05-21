@@ -101,6 +101,7 @@ SELECT
 	s.host_name,
 	s.program_name,
 	at.name AS transaction_name,
+    s.last_request_start_time,
 	at.transaction_begin_time,
 	r.status,
 	r.command,
@@ -111,5 +112,5 @@ JOIN sys.dm_exec_sessions s ON st.session_id = s.session_id
 LEFT JOIN sys.dm_exec_requests r ON s.session_id = r.session_id
 LEFT JOIN sys.dm_tran_database_transactions dt ON at.transaction_id = dt.transaction_id
 OUTER APPLY sys.dm_exec_sql_text(r.sql_handle) txt
-WHERE at.transaction_begin_time < DATEADD(MINUTE,-2,GETDATE())
+WHERE s.last_request_start_time < DATEADD(MINUTE,-2,GETDATE())
 ORDER BY 1,3,4
