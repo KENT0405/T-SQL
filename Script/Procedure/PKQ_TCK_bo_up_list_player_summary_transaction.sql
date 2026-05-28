@@ -1,9 +1,9 @@
 /*
 declare @p18 int
-set @p18=1
+set @p18=0
 exec sp_executesql N'EXEC [#bo_up_list_player_summary_transaction]  @P0 ,  @P1 ,  @P2 ,  @P3 ,  @P4 ,  @P5 ,  @P6 ,  @P7 ,  @P8 ,  @P9 ,  @P10 ,  @P11 ,  @P12 ,  @P13 ,  @P14 ,  @P15  OUT',
 N'@P0 varchar(8000),@P1 int,@P2 varchar(8000),@P3 int,@P4 varchar(8000),@P5 nvarchar(4000),@P6 varchar(8000),@P7 varchar(8000),@P8 varchar(8000),@P9 bit,@P10 bit,@P11 datetime,@P12 datetime,@P13 int,@P14 int,@P15 int OUTPUT',
-'TNT',1,'TNT',1,'',N'','IDA000P0000000334921','','acct_id ASC',1,0,'2026-02-23 00:00:00','2026-04-21 23:59:59.997',1,50,@p18 output
+'TNT',1,'TNT',1,'',N'','IDA000P0000000213334','','acct_id ASC',0,0,'2026-05-24 02:00:00','2026-05-24 03:59:59.997',1,50,@p18 output
 select @p18
 */
 -- =============================================
@@ -35,6 +35,7 @@ BEGIN
 	SET NOCOUNT, ARITHABORT ON;
 
 	DECLARE
+		@TBname NVARCHAR(50) = N'acct_daily_tran',
 		@SQL NVARCHAR(MAX) = '',
 		@SQL_condition NVARCHAR(MAX) = '',
 		@Sw_BeginDate Datetime = @BeginDate,
@@ -45,6 +46,7 @@ BEGIN
 	IF(@CheckDay = 1)
 	BEGIN
 		-- 从按天汇总表中查询
+		SET @TBname = N'acct_daily_tran_day'
 		SET @BeginDate = CAST(@BeginDate AS DATE)
 		SET @EndDate = CAST(@EndDate AS DATE)
 	END
@@ -75,15 +77,6 @@ BEGIN
 	END
 
 	SET @SQL = N'
-	/*
-	SELECT
-		acct_id,
-		wl_amt_total
-	INTO #temp_acct
-	FROM acct_credit WITH (NOLOCK)
-	' + IIF(@OnlyQueryRecords = 1, 'WHERE 1 <> 1','') + '
-	*/
-
 	SELECT
 		acct_id,
 		SUM(CASE tran_type WHEN ''Sw-In'' THEN value_change ELSE 0 END) sw_transfer_in,
@@ -110,7 +103,7 @@ BEGIN
 		SUM(ISNULL(t.out_amt,0)) AS transfer_out,
 		SUM(ISNULL(t.out_count,0)) AS out_num
 	INTO #temp_result
-	FROM acct_daily_tran t WITH (NOLOCK)
+	FROM ' + @TBname + ' t WITH (NOLOCK)
 	WHERE t.tran_date BETWEEN @BeginDate AND @EndDate
 	AND t.agent_lv' + CONVERT(VARCHAR(1),@UplineRoleId) + ' = @UplineAcctId
 	' + @SQL_condition + '
