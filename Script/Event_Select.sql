@@ -31,6 +31,7 @@ SELECT
 		CAST(event_data AS XML)'
 		WHEN 'Rd-Tool Trace' THEN '
 		CAST(event_data AS XML).value(''(event/action[@name="client_hostname"]/value)[1]'', ''NVARCHAR(100)'') AS client_hostname,
+		CAST(event_data AS XML).value(''(event/action[@name="client_app_name"]/value)[1]'', ''NVARCHAR(100)'') AS client_app_name,
 		CAST(event_data AS XML).value(''(event/action[@name="username"]/value)[1]'', ''NVARCHAR(100)'') AS UserName,
 		CAST(event_data AS XML).value(''(event/data[@name="cpu_time"]/value)[1]'', ''NVARCHAR(MAX)'') AS cpu_time,
 		CAST(event_data AS XML).value(''(event/data[@name="writes"]/value)[1]'', ''NVARCHAR(MAX)'') AS writes,
@@ -41,7 +42,6 @@ SELECT
 		CAST(event_data AS XML).value(''(event/data[@name="row_count"]/value)[1]'', ''NVARCHAR(MAX)'') AS row_count,
 		CAST(event_data AS XML).value(''(event/data[@name="batch_text"]/value)[1]'', ''NVARCHAR(MAX)'') AS batch_text,
 		CAST(event_data AS XML).value(''(event/data[@name="result"]/text)[1]'', ''NVARCHAR(MAX)'') AS result,
-		CAST(event_data AS XML).value(''(event/action[@name="client_app_name"]/value)[1]'', ''NVARCHAR(100)'') AS client_app_name,
 		CAST(event_data AS XML).value(''(event/action[@name="client_pid"]/value)[1]'', ''NVARCHAR(100)'') AS client_pid'
 	END + '
 FROM sys.fn_xe_file_target_read_file(''' + FilePath + ''', null, null, null)
