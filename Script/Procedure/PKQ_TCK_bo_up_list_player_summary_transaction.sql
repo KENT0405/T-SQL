@@ -121,8 +121,8 @@ BEGIN
 		ISNULL(c.sw_transfer_in,0) sw_transfer_in,
 		ISNULL(c.sw_transfer_out,0) sw_transfer_out
 	FROM #temp_result AS a
-	LEFT JOIN acct_credit AS b ON a.acct_id = b.acct_id
-	LEFT JOIN #temp_sw AS c ON a.acct_id = c.acct_id
+	LEFT JOIN acct_credit AS b WITH (NOLOCK) ON a.acct_id = b.acct_id
+	LEFT JOIN #temp_sw AS ON a.acct_id = c.acct_id
 	' + IIF(@OnlyQueryRecords = 1, 'WHERE 1 <> 1','') + '
 	ORDER BY ' + @ParameterSort + '
 	OFFSET (@PageIndex - 1) * @PageSize ROWS
