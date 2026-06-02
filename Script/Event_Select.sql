@@ -49,12 +49,12 @@ WHERE DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''
 ' +
 CASE EventName
 	WHEN 'T-SQL Trace' THEN '
-	--AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''UPDATE%''
-	--AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''SELECT%''
-	--AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''INSERT%''
+	AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''UPDATE%''
+	AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''SELECT%''
+	AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''INSERT%''
 	'
 	WHEN 'Rd-Tool Trace' THEN '
-	--AND CAST(event_data AS XML).value(''(event/data[@name="batch_text"]/value)[1]'', ''NVARCHAR(MAX)'') LIKE ''%%''
+	--AND CAST(event_data AS XML).value(''(event/data[@name="batch_text"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE ''%%''
 	'
 END
 + '
