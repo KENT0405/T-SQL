@@ -28,7 +28,7 @@ SELECT
 		CAST(event_data AS XML).value(''(event/data[@name="duration"]/value)[1]'', ''NVARCHAR(MAX)'') AS duration,
 		CAST(event_data AS XML).value(''(event/data[@name="result"]/text)[1]'', ''NVARCHAR(MAX)'') AS result,
 		CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') AS SQL_Text,
-		CAST(event_data AS XML)'
+		CAST(event_data AS XML) AS XML_PATH'
 		WHEN 'Rd-Tool Trace' THEN '
 		CAST(event_data AS XML).value(''(event/action[@name="client_hostname"]/value)[1]'', ''NVARCHAR(100)'') AS client_hostname,
 		CAST(event_data AS XML).value(''(event/action[@name="client_app_name"]/value)[1]'', ''NVARCHAR(100)'') AS client_app_name,
@@ -45,7 +45,18 @@ SELECT
 		CAST(event_data AS XML).value(''(event/action[@name="client_pid"]/value)[1]'', ''NVARCHAR(100)'') AS client_pid'
 	END + '
 FROM sys.fn_xe_file_target_read_file(''' + FilePath + ''', null, null, null)
-WHERE DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) >= GETDATE() - 30
+WHERE DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) >= GETDATE() - 180
+' +
+CASE EventName
+	WHEN 'T-SQL Trace' THEN '
+	--AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''UPDATE%''
+	--AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''SELECT%''
+	'
+	WHEN 'Rd-Tool Trace' THEN '
+	--AND CAST(event_data AS XML).value(''(event/data[@name="batch_text"]/value)[1]'', ''NVARCHAR(MAX)'') LIKE ''%%''
+	'
+END
++ '
 ORDER BY DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) DESC
 '
 FROM CTE
