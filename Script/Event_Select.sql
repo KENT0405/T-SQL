@@ -45,7 +45,7 @@ SELECT
 		CAST(event_data AS XML).value(''(event/action[@name="client_pid"]/value)[1]'', ''NVARCHAR(100)'') AS client_pid'
 	END + '
 FROM sys.fn_xe_file_target_read_file(''' + FilePath + ''', null, null, null)
-WHERE DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) >= GETDATE() - 180
+WHERE DATEADD(HOUR,8,CAST(event_data AS XML).value(''(event/@timestamp)[1]'', ''DATETIME'')) >= GETDATE() - 30
 ' +
 CASE EventName
 	WHEN 'T-SQL Trace' THEN '
