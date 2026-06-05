@@ -1,0 +1,154 @@
+/*
+exec sp_executesql N'EXEC [#bo_up_list_winlose_by_game_day]  @P0 ,  @P1 ,  @P2 ,  @P3 ,  @P4 ,  @P5 ,  @P6 ,  @P7 ,  @P8 ,  @P9 ,  @P10 ',
+N'@P0 varchar(8000),@P1 int,@P2 varchar(8000),@P3 int,@P4 int,@P5 varchar(8000),@P6 bit,@P7 int,@P8 varchar(8000),@P9 datetime,@P10 datetime',
+'TNT',1,'MYAR',4,-1,'',0,-1,'game_code ASC','2026-05-28 00:00:00','2026-06-03 23:59:59.997'
+go
+exec sp_executesql N'EXEC [bo_up_list_winlose_by_game_day]  @P0 ,  @P1 ,  @P2 ,  @P3 ,  @P4 ,  @P5 ,  @P6 ,  @P7 ,  @P8 ,  @P9 ,  @P10 ',
+N'@P0 varchar(8000),@P1 int,@P2 varchar(8000),@P3 int,@P4 int,@P5 varchar(8000),@P6 bit,@P7 int,@P8 varchar(8000),@P9 datetime,@P10 datetime',
+'TNT',1,'MYAR',4,-1,'',0,-1,'game_code ASC','2026-05-28 00:00:00','2026-06-03 23:59:59.997'
+*/
+-- =============================================
+-- Author:		<TK>
+-- Create date: <2020-07-24>
+-- Description:	<PKQ BO 2.3 Win Lose By Game 游戏输赢报表 >
+-- =============================================
+-- exec [bo_up_list_winlose_by_game_day] 'TNT',1,'TNT',1,-1,'GB',0,-1,'wl_amt DESC','2026-02-01 00:00:00.000','2026-03-03 23:59:59.997'
+CREATE OR ALTER PROCEDURE [dbo].[#bo_up_list_winlose_by_game_day]
+	@UplineAcctId VARCHAR(30) = '',
+	@UplineRoleId INT = 0,
+	@AcctId VARCHAR(30) = '',
+	@L SMALLINT = 5,
+	@FraudStatus INT = -1, --@FraudStatus:   -1:All    0:Normal    1:   Fraud    2 :Other
+	@GameMode VARCHAR(3) = '',-- '' ：查所有  , 'LC':只查本地厅数据 , 'GB':只查国际厅数据
+	@OnlySeniorA BIT = 0, -- @OnlySeniorA=1时只查询a.agent_lv3 LIKE '__A' 的数据
+	@Robot INT = -1, --@Robot:  -1 ：包含普通玩家和机器人  0 ：只包普通玩家,  1:只包含机器人
+	@ParameterSort VARCHAR(100) = '',
+	@BeginDate DATE = '',
+	@EndDate DATE = ''
+AS
+BEGIN
+    SET NOCOUNT, ARITHABORT ON;
+
+	DROP TABLE IF EXISTS #temp;
+
+	DECLARE
+		@SQL NVARCHAR(MAX) = '',
+		@SQL_condition NVARCHAR(MAX) = ''
+
+	SET @SQL_condition = N'
+	AND a.agent_lv' + CONVERT(VARCHAR(2),@UplineRoleId) + ' = @UplineAcctId
+	AND a.agent_lv' + CONVERT(VARCHAR(2),@L) + ' = @AcctId
+	'
+
+	IF (@OnlySeniorA = 1)
+	BEGIN
+		SET @SQL_condition += ' AND a.agent_lv3 LIKE ''__A'''
+	END
+
+	IF (@GameMode <> '')
+	BEGIN
+		SET @SQL_condition += '	AND a.game_mode = @GameMode'
+	END
+
+	IF (@Robot <> -1)
+	BEGIN
+		SET @SQL_condition += '	AND b.is_robot = @Robot'
+	END
+
+	IF (@FraudStatus <> -1)
+	BEGIN
+		SET @SQL_condition += '	AND b.fraud_status = @FraudStatus'
+		IF (@FraudStatus = 1)
+		BEGIN
+			SET @SQL_condition += '	AND a.game_code NOT IN (''PK-CM'',''PK-CK'',''PK-CS'',''PK-SK'')'
+		END
+	END
+
+	SET @SQL = N'
+	SELECT
+		game_code,
+		a.curr_id,
+		a.acct_id,
+		bet_count,
+		jp_bet_count,
+		ttl_bet,
+		tax_amt,
+		wl_amt,
+		turnover,
+		jp_contribute_amt,
+		jp_win,
+		ttl_bet_global,
+		tax_amt_global,
+		wl_amt_global,
+		turnover_global,
+		jp_contribute_amt_global,
+		jp_win_global
+	INTO #temp
+	FROM acct_game_mode_daily_tran_day a WITH (NOLOCK)
+	INNER JOIN acct_info b WITH (NOLOCK) ON a.acct_id = b.acct_id
+	WHERE a.tran_date BETWEEN @BeginDate AND @EndDate
+	'+ @SQL_condition+'
+	OPTION(RECOMPILE)
+
+	SELECT
+		game_code,
+		curr_id,
+		COUNT(DISTINCT acct_id) AS players,
+		SUM(bet_count) AS bet_count,
+		SUM(jp_bet_count) AS jp_bet_count,
+		SUM(ttl_bet) AS bet_amt,
+		SUM(tax_amt) AS free,
+		SUM(wl_amt) AS wl_amt,
+		SUM(turnover) AS turnover,
+		SUM(jp_contribute_amt) AS jp_bet,
+		SUM(jp_win) AS jp_win,
+		SUM(ttl_bet_global) AS bet_amt_global,
+		SUM(tax_amt_global) AS free_global,
+		SUM(wl_amt_global) AS wl_amt_global,
+		SUM(turnover_global) AS turnover_global,
+		SUM(jp_contribute_amt_global) AS jp_bet_global,
+		SUM(jp_win_global) AS jp_win_global
+	FROM #temp
+	GROUP BY game_code, curr_id
+	ORDER BY ' + @ParameterSort + '
+
+	SELECT
+		COUNT(DISTINCT acct_id) AS players,
+		SUM(bet_count) AS bet_count,
+		SUM(jp_bet_count) AS jp_bet_count,
+		SUM(ttl_bet) AS bet_amt,
+		SUM(tax_amt) AS free,
+		SUM(wl_amt) AS wl_amt,
+		SUM(turnover) AS turnover,
+		SUM(jp_contribute_amt) AS jp_bet,
+		SUM(jp_win) AS jp_win,
+		SUM(ttl_bet_global) AS bet_amt_global,
+		SUM(tax_amt_global) AS free_global,
+		SUM(wl_amt_global) AS wl_amt_global,
+		SUM(turnover_global) AS turnover_global,
+		SUM(jp_contribute_amt_global) AS jp_bet_global,
+		SUM(jp_win_global) AS jp_win_global
+	FROM #temp'
+
+	--PRINT @SQL
+
+	EXEC sp_executesql @SQL,N'
+	@UplineAcctId	VARCHAR(30),
+	@AcctId			VARCHAR(30),
+	@FraudStatus	INT,
+	@GameMode		VARCHAR(3),
+	@OnlySeniorA	BIT,
+	@Robot			INT,
+	@BeginDate		DATETIME,
+	@EndDate		DATETIME',
+	@UplineAcctId,
+	@AcctId,
+	@FraudStatus,
+	@GameMode,
+	@OnlySeniorA,
+	@Robot,
+	@BeginDate,
+	@EndDate
+
+    SET NOCOUNT, ARITHABORT OFF;
+END
