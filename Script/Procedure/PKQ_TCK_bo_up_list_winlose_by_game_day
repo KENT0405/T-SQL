@@ -1,11 +1,12 @@
 /*
 exec sp_executesql N'EXEC [#bo_up_list_winlose_by_game_day]  @P0 ,  @P1 ,  @P2 ,  @P3 ,  @P4 ,  @P5 ,  @P6 ,  @P7 ,  @P8 ,  @P9 ,  @P10 ',
 N'@P0 varchar(8000),@P1 int,@P2 varchar(8000),@P3 int,@P4 int,@P5 varchar(8000),@P6 bit,@P7 int,@P8 varchar(8000),@P9 datetime,@P10 datetime',
-'TNT',1,'MYAR',4,-1,'',0,-1,'game_code ASC','2026-05-28 00:00:00','2026-06-03 23:59:59.997'
+'TNT',1,'MYA002',5,-1,'',0,-1,'game_code ASC','2026-05-07 00:00:00','2026-05-13 23:59:59.997'
 go
 exec sp_executesql N'EXEC [bo_up_list_winlose_by_game_day]  @P0 ,  @P1 ,  @P2 ,  @P3 ,  @P4 ,  @P5 ,  @P6 ,  @P7 ,  @P8 ,  @P9 ,  @P10 ',
 N'@P0 varchar(8000),@P1 int,@P2 varchar(8000),@P3 int,@P4 int,@P5 varchar(8000),@P6 bit,@P7 int,@P8 varchar(8000),@P9 datetime,@P10 datetime',
-'TNT',1,'MYAR',4,-1,'',0,-1,'game_code ASC','2026-05-28 00:00:00','2026-06-03 23:59:59.997'
+'TNT',1,'MYA002',5,-1,'',0,-1,'game_code ASC','2026-05-07 00:00:00','2026-05-13 23:59:59.997'
+go
 */
 -- =============================================
 -- Author:		<TK>
