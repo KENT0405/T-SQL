@@ -43,11 +43,14 @@
 
 ※作業步驟:
     1. 手動建立含四個月資料的TABLE (2個舊月份 + 當月 + 下個月)
+        執行 PROC_JobCreateNextMonthTB @TB_name, @month (一次只會產一個月的)
+        ex : PROC_JobCreateNextMonthTB 'TB_ProviderTicketFCS_Main', '2026-04-01'
         -by day : 每天一張table
         -by month : 每月一張table
         -by none : partition table
     2. 檢查是否有子表 (有子表要切 partition)
-    3. 建立 view，並確認schema是否正確
+    3. 建立 view，並確認schema是否正確，執行 PROC_JobModifyRangeView @TB_name
+    4. 執行 idc_repl 裡的 PROC_CreateAllErrorView (更改我們自己看的 View:errormessage)
 ```
 
 - - -
