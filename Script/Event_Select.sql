@@ -52,6 +52,12 @@ CASE EventName
 	AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''UPDATE%''
 	AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''SELECT%''
 	AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%N''''INSERT%''
+
+	--PKQ TCK
+	--AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%lobby_up_list_player_transaction_wl%''
+	--AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%api_up_bet_history%''
+	--AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%bo_up_list_bet_log%''
+	--AND CAST(event_data AS XML).value(''(event/data[@name="statement"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE	''%merchant_bo_report_game_winlose%''
 	'
 	WHEN 'Rd-Tool Trace' THEN '
 	--AND CAST(event_data AS XML).value(''(event/data[@name="batch_text"]/value)[1]'', ''NVARCHAR(MAX)'') NOT LIKE ''%%''
