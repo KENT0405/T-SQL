@@ -10,8 +10,8 @@
 3. 腳本更改成new_provider名字(注意大小寫)後建立
 4. DB owner改成db_user
 5. GRANT USER(rd_user=4, IC_QA=1, qa_user=1, qard_user=2, read_ac=1)
-6. [建立MT_JOB在使用的PROCEDURE](../@@Notes/@@TKT自動查詢Src_types相關procedure.md)
-7. 建立TABLE : sys_job_errormessage
+6. 建立TABLE : sys_job_errormessage
+7. [建立MT_JOB在使用的PROCEDURE](../@@Notes/@@TKT自動查詢Src_types相關procedure.md)
 
 
 #### <font color=#afeeee>(二)、設定 source db partition table及大小表同步作業</font>
