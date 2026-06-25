@@ -1,4 +1,4 @@
-### TKT自動查詢Src_types相關procedure
+### --TKT自動查詢Src_types相關procedure
 ```
 DECLARE
 	@Src_types VARCHAR(20) = 'VIEW_MONTH', -- TABLE / VIEW_DAY / VIEW_MONTH
@@ -25,10 +25,12 @@ WHERE EXISTS
     SELECT 1
     FROM (
         VALUES
+			(''TABLE'', ''PROC_JobChangedata''),
 			(''TABLE'', ''PROC_JobCreate4SwitchTable''),
 			(''TABLE'', ''PROC_JobSwitchTable''),
 			(''TABLE'', ''PROC_JobKeepData''),
 			(''TABLE'', ''PROC_JobModifyPartition''),
+			(''VIEW_DAY'', ''PROC_JobChangedata''),
             (''VIEW_DAY'', ''PROC_JobCreateFilegroup''),
             (''VIEW_DAY'', ''PROC_JobCreateNextMonthTB''),
 			(''VIEW_DAY'', ''PROC_JobModifyRangeView''),
@@ -36,6 +38,7 @@ WHERE EXISTS
 			(''VIEW_DAY'', ''PROC_JobCleanSub''),
 			(''VIEW_DAY'', ''PROC_JobModifyPartition''),
 			(''VIEW_DAY'', ''PROC_JobTruncateFilegroup''),
+			(''VIEW_MONTH'', ''PROC_JobChangedata''),
             (''VIEW_MONTH'', ''PROC_JobCreateFilegroup''),
 			(''VIEW_MONTH'', ''PROC_JobCreateNextMonthTB_By_Month''),
 			(''VIEW_MONTH'', ''PROC_JobModifyRangeView_By_Month''),
