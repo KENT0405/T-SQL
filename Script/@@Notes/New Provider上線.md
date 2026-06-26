@@ -5,53 +5,57 @@
 ### <font color=#FF95CA>一、DEV上線</font>
 #### <font color=#afeeee>(一)、建立 ticket db 需求</font>
 
+`作業步驟:`
 1. CREATE new_provider folder
 2. CREATE DATABASE script --產出模板腳本    --agc、bgs、btl
 3. 腳本更改成new_provider名字(注意大小寫)後建立
 4. DB owner改成db_user
-5. GRANT USER(rd_user=4, IC_QA=1, qa_user=1, qard_user=2, read_ac=1)
+5. [GRANT USER(rd_user=4, IC_QA=1, qa_user=1, qard_user=2, read_ac=1)](../User_Alter_All_Permission.sql)
 6. 建立TABLE : sys_job_errormessage
 7. [建立MT_JOB在使用的PROCEDURE](../@@Notes/@@TKT自動查詢Src_types相關procedure.md)
 
 
 #### <font color=#afeeee>(二)、設定 source db partition table及大小表同步作業</font>
-```
-※需求訊息:
-    小表Database：source_data_casino
-    大表Database：source_data_casino_all
-    1. 小表為: TB_SourceDataYBC_Main
-    2. 小表資料每小時做切割
-    3. 大表資料以 1 個月做切割
-    4. 小表資料定時 insert 至大表中
 
-※作業步驟:
-    1. 檢查小db中是否有該table >> 有少回報給RD
-    2. 檢查大db中是否有該table >> 有少就手動建立
-    3. 檢查table是否都有切partition(小db按分鐘切，大db按月切) >> 沒切就手動切
-    4. 檢查source_job中設定表是否已加入該張table的大小表移除設定 >> 沒有就手動加上
-    5. 設定複寫
-        -加入對應發行集 (目前都是放到 slot、casino、other 三大分類中)
-        -若有新增新的發行集，需開啟allow_partition_switch
-```
+`需求訊息:`
+- 小表Database：source_data_casino
+- 大表Database：source_data_casino_all
+1. 小表為: TB_SourceDataYBC_Main
+2. 小表資料每小時做切割
+3. 大表資料以 1 個月做切割
+4. 小表資料定時 insert 至大表中
+
+`作業步驟:`
+ 1. 檢查小db中是否有該table >> 有少回報給RD
+ 2. 檢查大db中是否有該table >> 有少就手動建立
+ 3. 檢查table是否都有切partition(小db按分鐘切，大db按月切) >> 沒切就手動切
+ 4. 檢查source_job中設定表是否已加入該張table的大小表移除設定 >> 沒有就手動加上
+ 5. 設定複寫
+    - 加入對應發行集 (目前都是放到 slot、casino、other 三大分類中)
+    - 若有新增新的發行集，需開啟allow_partition_switch
+
 
 #### <font color=#afeeee>(三)、設定 ticket db 的 partition view</font>
-```
-※需求訊息:
-    設定 TicketDB 的 Partition View
-    1. Table 為 TB_ProviderTicketYBC_Main
-    2. View 請命名為 TB_ProviderTicketYBC，Partition View 以【月】為切割單位，存放時間為三個月
 
-※作業步驟:
-    1. 手動建立含四個月資料的TABLE (2個舊月份 + 當月 + 下個月)
-        執行 PROC_JobCreateNextMonthTB @TB_name, @month (一次只會產一個月的)
-        ex : PROC_JobCreateNextMonthTB 'TB_ProviderTicketFCS_Main', '2026-04-01'
-        -by day : 每天一張table
-        -by month : 每月一張table
-        -by none : partition table
-    2. 檢查是否有子表 (有子表要切 partition)
-    3. 建立 view，並確認schema是否正確，執行 PROC_JobModifyRangeView @TB_name
-    4. 執行 idc_repl 裡的 PROC_CreateAllErrorView (更改我們自己看的 View:errormessage)
-```
+`需求訊息: 設定 TicketDB 的 Partition View`
+1. Table 為 TB_ProviderTicketYBC_Main
+2. View 請命名為 TB_ProviderTicketYBC，Partition View 以【月】為切割單位，存放時間為三個月
+
+`作業步驟:`
+1. 手動建立含四個月資料的TABLE (2個舊月份 + 當月 + 下個月)
+- EXEC PROC_JobCreateNextMonthTB(_By_Month) @TB_name, @month (一次只會產一個月的)
+
+    > By Day : 每天一張table (EXEC PROC_JobCreateNextMonthTB 'TB_ProviderTicketFCS_Main', '2026-04-01')
+
+    > By Month : 每月一張table (EXEC PROC_JobCreateNextMonthTB_By_Month 'TB_ProviderTicketOPC_Main','2026-04-01')
+
+    > By None : partition table (手動產出partition schema & function)
+2. 檢查是否有子表 (有子表要切 partition)
+3. 建立 view，並確認schema是否正確
+    > EXEC PROC_JobModifyRangeView @TB_name
+4. 更改我們自己看的 View:errormessage
+    > EXEC idc_repl..PROC_CreateAllErrorView
+
 
 - - -
 ### <font color=#FF95CA>二、Staging上線 (DB單)</font>
