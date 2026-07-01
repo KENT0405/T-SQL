@@ -6,7 +6,7 @@ AS
 (
 	SELECT *
 	FROM (VALUES
-	('AWS'),('INP'),('ISN'),('RYC'),('SXC'),('TXR'),('AES'),('BNS'),('BSS'),('EBC'),('EBS'),('MGC'),('MGS'),('NSS'),('OKN'),('PSS'), --Offline DB List
+	('AWS'),('INP'),('ISN'),('RYC'),('SXC'),('TXR'),('AES'),('BNS'),('BSS'),('EBC'),('EBS'),('MGC'),('MGS'),('NSS'),('OKN'),('PSS'),('EBS'), --Offline DB List
 	('reget'),('source_jobs'),('all_source_data_tmp'),('distribution') --Except DB List
 	) a(DBname)
 )
