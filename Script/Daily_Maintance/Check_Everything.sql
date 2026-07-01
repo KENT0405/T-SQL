@@ -1,6 +1,6 @@
 SET NOCOUNT ON;
 
-DECLARE @ReportType INT = 2 --2047
+DECLARE @ReportType INT = 1024 --2047
 
 DROP TABLE IF EXISTS #ReportType;
 SELECT
@@ -344,7 +344,8 @@ BEGIN
 		PartitionScheme VARCHAR(100),
 		PartitionFunction VARCHAR(100),
         LowerBoundary DATETIME,
-        UpperBoundary DATETIME
+        UpperBoundary DATETIME,
+        Row_Count INT
     )
 
     SELECT @SQL_Check_Partition += N'
@@ -356,7 +357,8 @@ BEGIN
 		ps.name AS PartitionScheme,
 		pf.name AS PartitionFunction,
         CAST(prv_left.value AS DATETIME) AS LowerBoundary,
-        CAST(prv_right.value AS DATETIME) AS UpperBoundary
+        CAST(prv_right.value AS DATETIME) AS UpperBoundary,
+        p.row_count AS Row_Count
     FROM ' + name + '.sys.dm_db_partition_stats p
     INNER JOIN ' + name + '.sys.indexes i ON i.object_id = p.object_id AND i.index_id = p.index_id
     INNER JOIN ' + name + '.sys.partition_schemes ps ON ps.data_space_id = i.data_space_id
@@ -403,4 +405,11 @@ BEGIN
 	OR (a.LowerBoundary < EOMONTH(GETDATE()) AND c.PartitionType = 'Daily' AND a.UpperBoundary IS NULL AND a.LowerBoundary <> DATEADD(DAY, 6, DATEADD(WEEK, DATEDIFF(WEEK, 0, GETDATE()) + 1, 0))) --Invalid max boundary
     AND a.LowerBoundary > '1900-12-31 00:00:00.000' --column type is number
     ORDER BY 1,2,3
+
+    SELECT *
+    FROM #Temp_Check_Partition
+    WHERE PartitionNumber = 1
+    AND Row_Count <> 0
+    AND TableName NOT LIKE '%4switch'
+    AND @@SERVERNAME IN ('TKT-DB-01')
 END
