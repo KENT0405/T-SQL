@@ -50,10 +50,11 @@
     > By Month : 每月一張table (EXEC PROC_JobCreateNextMonthTB_By_Month 'TB_ProviderTicketOPC_Main','2026-04-01')
 
     > By None : partition table (手動產出partition schema & function)
-2. 檢查是否有子表 (有子表要切 partition)
-3. 建立 view，並確認schema是否正確
+2. 確認 Main table compression 是否為ROW
+3. 檢查是否有子表 (有子表要切 partition 以balance_date為切分單位)
+4. 建立 view，並確認schema是否正確
     > EXEC PROC_JobModifyRangeView @TB_name
-4. 更改我們自己看的 View:errormessage
+5. 更改我們自己看的 View:errormessage
     > EXEC idc_repl..PROC_CreateAllErrorView
 
 
