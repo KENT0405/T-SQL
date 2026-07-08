@@ -8,10 +8,11 @@ DECLARE
 AS
 (
 	SELECT
-		ROW_NUMBER() OVER(PARTITION BY Src_types ORDER BY sn) id,
 		Src_types,
 		Tkt_db_name
 	FROM idc_repl..vw_sys_jobs_setting
+	WHERE provider_id IN ('agc','bgs','btl')
+	AND Src_types = @Src_types
 )
 SELECT @SQL = '
 SELECT
@@ -56,8 +57,6 @@ WHERE EXISTS
 ORDER BY procedure_name DESC
 '
 FROM CTE
-WHERE id = 1
-AND Src_types = @Src_types
 
 --SELECT @SQL
 EXEC(@SQL)
