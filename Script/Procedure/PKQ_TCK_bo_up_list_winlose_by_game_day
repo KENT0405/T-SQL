@@ -1,11 +1,11 @@
 /*
 exec sp_executesql N'EXEC [#bo_up_list_winlose_by_game_day]  @P0 ,  @P1 ,  @P2 ,  @P3 ,  @P4 ,  @P5 ,  @P6 ,  @P7 ,  @P8 ,  @P9 ,  @P10 ',
 N'@P0 varchar(8000),@P1 int,@P2 varchar(8000),@P3 int,@P4 int,@P5 varchar(8000),@P6 bit,@P7 int,@P8 varchar(8000),@P9 datetime,@P10 datetime',
-'TNT',1,'MYA002',5,-1,'',0,-1,'game_code ASC','2026-05-07 00:00:00','2026-05-13 23:59:59.997'
+'TNT',1,'IDA000',5,-1,'',0,-1,'game_code ASC','2026-07-02 00:00:00','2026-07-08 23:59:59.997'
 go
 exec sp_executesql N'EXEC [bo_up_list_winlose_by_game_day]  @P0 ,  @P1 ,  @P2 ,  @P3 ,  @P4 ,  @P5 ,  @P6 ,  @P7 ,  @P8 ,  @P9 ,  @P10 ',
 N'@P0 varchar(8000),@P1 int,@P2 varchar(8000),@P3 int,@P4 int,@P5 varchar(8000),@P6 bit,@P7 int,@P8 varchar(8000),@P9 datetime,@P10 datetime',
-'TNT',1,'MYA002',5,-1,'',0,-1,'game_code ASC','2026-05-07 00:00:00','2026-05-13 23:59:59.997'
+'TNT',1,'IDA000',5,-1,'',0,-1,'game_code ASC','2026-07-02 00:00:00','2026-07-08 23:59:59.997'
 go
 */
 -- =============================================
@@ -30,11 +30,12 @@ AS
 BEGIN
     SET NOCOUNT, ARITHABORT ON;
 
-	DROP TABLE IF EXISTS #temp;
+	DROP TABLE IF EXISTS #acct_info, #temp;
 
 	DECLARE
 		@SQL NVARCHAR(MAX) = '',
-		@SQL_condition NVARCHAR(MAX) = ''
+		@SQL_condition NVARCHAR(MAX) = '',
+		@SQL_condition_acct NVARCHAR(MAX) = ''
 
 	SET @SQL_condition = N'
 	AND a.agent_lv' + CONVERT(VARCHAR(2),@UplineRoleId) + ' = @UplineAcctId
@@ -53,12 +54,12 @@ BEGIN
 
 	IF (@Robot <> -1)
 	BEGIN
-		SET @SQL_condition += '	AND b.is_robot = @Robot'
+		SET @SQL_condition_acct += '	AND b.is_robot = @Robot'
 	END
 
 	IF (@FraudStatus <> -1)
 	BEGIN
-		SET @SQL_condition += '	AND b.fraud_status = @FraudStatus'
+		SET @SQL_condition_acct += '	AND b.fraud_status = @FraudStatus'
 		IF (@FraudStatus = 1)
 		BEGIN
 			SET @SQL_condition += '	AND a.game_code NOT IN (''PK-CM'',''PK-CK'',''PK-CS'',''PK-SK'')'
@@ -66,6 +67,12 @@ BEGIN
 	END
 
 	SET @SQL = N'
+    SELECT acct_id
+    INTO #acct_info
+    FROM acct_info b WITH (NOLOCK)
+	WHERE 1 = 1
+	' + @SQL_condition_acct + '
+
 	SELECT
 		game_code,
 		a.curr_id,
@@ -86,7 +93,7 @@ BEGIN
 		jp_win_global
 	INTO #temp
 	FROM acct_game_mode_daily_tran_day a WITH (NOLOCK)
-	INNER JOIN acct_info b WITH (NOLOCK) ON a.acct_id = b.acct_id
+	INNER JOIN #acct_info b ON a.acct_id = b.acct_id
 	WHERE a.tran_date BETWEEN @BeginDate AND @EndDate
 	'+ @SQL_condition+'
 	OPTION(RECOMPILE)
