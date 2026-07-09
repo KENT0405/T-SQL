@@ -76,10 +76,10 @@ CASE EventName
 	AND SQL_Text NOT LIKE ''%N''''INSERT%''
 
 	--PKQ TCK
-	--AND SQL_Text ''%lobby_up_list_player_transaction_wl%''
-	--AND SQL_Text ''%api_up_bet_history%''
-	--AND SQL_Text ''%bo_up_list_bet_log%''
-	--AND SQL_Text ''%merchant_bo_report_game_winlose%''
+	--AND SQL_Text NOT LIKE ''%lobby_up_list_player_transaction_wl%''
+	--AND SQL_Text NOT LIKE ''%api_up_bet_history%''
+	--AND SQL_Text NOT LIKE ''%bo_up_list_bet_log%''
+	--AND SQL_Text NOT LIKE ''%merchant_bo_report_game_winlose%''
 	'
 	WHEN 'Rd-Tool Trace' THEN '
 	--AND batch_text NOT LIKE ''%%''
