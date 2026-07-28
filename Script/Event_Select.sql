@@ -69,6 +69,8 @@ WHERE EventTime >= ' + @Start_Day + '
 CASE EventName
 	WHEN 'DBA_Base' THEN '
 	AND username NOT IN (''kent'',''gino'',''jacky'')
+	AND client_app_name NOT IN (''Replication Monitor'')
+	--AND username = ''bo_ac''
 	'
 	WHEN 'T-SQL Trace' THEN '
 	AND SQL_Text NOT LIKE ''%N''''UPDATE%''
