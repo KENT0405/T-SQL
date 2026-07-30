@@ -88,7 +88,7 @@ BEGIN
 	)
 
 	INSERT INTO @Filters
-	SELECT '["' + REPLACE(LTRIM(RTRIM(value)), ',', '","') + '"]'
+	SELECT N'["' + REPLACE(LTRIM(RTRIM(value)), ',', '","') + N'"]'
 	FROM STRING_SPLIT(@FilterParameters, '/')
 
 	DECLARE cur CURSOR FOR
