@@ -55,7 +55,11 @@ BEGIN
 		@filecount = 2
 
 	-- Set the events all columns
-	SELECT @SQL += 'EXEC sp_trace_setevent ' + CAST(@TraceID AS VARCHAR(100)) + ', ' + CAST(te.trace_event_id AS VARCHAR(100)) + ', ' + CAST(teb.trace_column_id AS VARCHAR(100)) + ', 1' + CHAR(10)
+	SELECT @SQL +=
+		'EXEC sp_trace_setevent ' +
+		CAST(@TraceID AS VARCHAR(100)) + ', ' +
+		CAST(te.trace_event_id AS VARCHAR(100)) + ', ' +
+		CAST(teb.trace_column_id AS VARCHAR(100)) + ', 1' + CHAR(10)
 	FROM sys.trace_categories AS tc
 	JOIN sys.trace_events AS te ON te.category_id = tc.category_id
 	JOIN sys.trace_event_bindings AS teb ON teb.trace_event_id = te.trace_event_id
