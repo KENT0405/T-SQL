@@ -70,6 +70,7 @@ CASE EventName
 	WHEN 'DBA_Base' THEN '
 	AND username NOT IN (''kent'',''gino'',''jacky'')
 	AND client_app_name NOT IN (''Replication Monitor'')
+	--AND message NOT IN (''Insufficient member credit for bet placement'')
 	--AND username = ''bo_ac''
 	'
 	WHEN 'T-SQL Trace' THEN '
