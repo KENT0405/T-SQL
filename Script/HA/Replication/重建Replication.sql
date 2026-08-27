@@ -34,7 +34,7 @@ SELECT @SQL_distribution = '
 	exec sp_MSupdate_agenttype_default @profile_id = 1
 	exec sp_MSupdate_agenttype_default @profile_id = 2
 	exec sp_MSupdate_agenttype_default @profile_id = 4
-	exec sp_MSupdate_agenttype_default @prorfile_id = 6
+	exec sp_MSupdate_agenttype_default @profile_id = 6
 	exec sp_MSupdate_agenttype_default @profile_id = 11
 	GO
 
