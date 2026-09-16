@@ -29,8 +29,9 @@
  1. 檢查小db中是否有該table >> 有少回報給RD
  2. 檢查大db中是否有該table >> 有少就手動建立
  3. 檢查table是否都有切partition(小db按分鐘切，大db按月切) >> 沒切就手動切
- 4. 檢查source_job中設定表是否已加入該張table的大小表移除設定 >> 沒有就手動加上
- 5. 設定複寫
+ 4. 檢查table是否都有壓縮(無論大小表、無論是不是 pk) >> DATA_COMPRESSION = PAGE
+ 5. 檢查source_job中設定表是否已加入該張table的大小表移除設定 >> 沒有就手動加上
+ 6. 設定複寫
     - 加入對應發行集 (目前都是放到 slot、casino、other 三大分類中)
     - 若有新增新的發行集，需開啟allow_partition_switch
 
@@ -42,7 +43,8 @@
 2. View 請命名為 TB_ProviderTicketYBC，Partition View 以【月】為切割單位，存放時間為三個月
 
 `作業步驟:`
-1. 手動建立含四個月資料的TABLE (2個舊月份 + 當月 + 下個月)
+1. 產模板前先確認 Main table compression 是否為ROW
+2. 手動建立含四個月資料的TABLE (2個舊月份 + 當月 + 下個月)
 - EXEC PROC_JobCreateNextMonthTB(_By_Month) @TB_name, @month (一次只會產一個月的)
 
     > By Day : 每天一張table (EXEC PROC_JobCreateNextMonthTB 'TB_ProviderTicketFCS_Main', '2026-04-01')
@@ -50,7 +52,6 @@
     > By Month : 每月一張table (EXEC PROC_JobCreateNextMonthTB_By_Month 'TB_ProviderTicketOPC_Main','2026-04-01')
 
     > By None : partition table (手動產出partition schema & function)
-2. 確認 Main table compression 是否為ROW
 3. 檢查是否有子表 (有子表要切 partition 以balance_date為切分單位)
 4. 建立 view，並確認schema是否正確
     > EXEC PROC_JobModifyRangeView @TB_name
