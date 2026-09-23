@@ -1,6 +1,7 @@
 DECLARE
 	@Event_Name VARCHAR(50) = 'DBA_Base', --(T-SQL Trace / DBA Trace / DBA_Base / Lock Trace / Rd-Tool Trace)
 	@Start_Day VARCHAR(50) = 'GETDATE() - 1',
+	@Full_Data TINYINT = 0, -- (@Full_Data = 1 >> include history data)
 	@SQL NVARCHAR(MAX) = ''
 
 ;WITH CTE
@@ -8,9 +9,11 @@ AS
 (
 	SELECT
 		a.name AS EventName,
-		CAST(b.target_data AS XML).value('(/EventFileTarget/File/@name)[1]', 'NVARCHAR(MAX)') AS FilePath
+		FilePath,
+		LEFT(p.FilePath,LEN(p.FilePath) - CHARINDEX('\', REVERSE(p.FilePath)) + 1) + a.name + N'*.xel' AS FilePath_Full
 	FROM sys.dm_xe_sessions a
 	JOIN sys.dm_xe_session_targets b ON a.address = b.event_session_address
+	CROSS APPLY (SELECT CAST(b.target_data AS XML).value('(/EventFileTarget/File/@name)[1]','NVARCHAR(MAX)') AS FilePath) p
 	WHERE a.session_source = 'server'
 	AND a.name = @Event_Name
 )
@@ -60,7 +63,7 @@ AS
 			CAST(event_data AS XML).value(''(event/data[@name="result"]/text)[1]'', ''NVARCHAR(MAX)'') AS result,
 			CAST(event_data AS XML).value(''(event/action[@name="client_pid"]/value)[1]'', ''NVARCHAR(100)'') AS client_pid'
 		END + '
-	FROM sys.fn_xe_file_target_read_file(''' + FilePath + ''', null, null, null)
+	FROM sys.fn_xe_file_target_read_file(''' + IIF(@Full_Data = 1,FilePath_Full,FilePath) + ''', null, null, null)
 )
 SELECT *
 FROM Event_Base
