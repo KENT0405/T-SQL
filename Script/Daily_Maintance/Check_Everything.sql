@@ -175,7 +175,7 @@ BEGIN
         [Space_Used(MB)] INT,
         [Available_Space(MB)] INT,
         Rate DECIMAL(5,2),
-        shrinkstr VARCHAR(100),
+        shrinkstr VARCHAR(200),
         shrinkstr_loop VARCHAR(1000)
     )
 
