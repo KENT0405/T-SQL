@@ -1,7 +1,6 @@
 DECLARE
-	@Event_Name VARCHAR(50) = 'DBA_Base', --(T-SQL Trace / DBA Trace / DBA_Base / Lock Trace / Rd-Tool Trace)
-	@Start_Day VARCHAR(50) = 'GETDATE() - 1',
-	@Full_Data TINYINT = 0, -- (@Full_Data = 1 >> include history data)
+	@EventName VARCHAR(50) = 'DBA_Base', --(T-SQL Trace / DBA Trace / DBA_Base / Lock Trace / Rd-Tool Trace)
+	@BeginDate VARCHAR(50) = '-1',
 	@SQL NVARCHAR(MAX) = ''
 
 ;WITH CTE
@@ -9,13 +8,11 @@ AS
 (
 	SELECT
 		a.name AS EventName,
-		FilePath,
-		LEFT(p.FilePath,LEN(p.FilePath) - CHARINDEX('\', REVERSE(p.FilePath)) + 1) + a.name + N'*.xel' AS FilePath_Full
+		CAST(b.target_data AS XML).value('(/EventFileTarget/File/@name)[1]','NVARCHAR(MAX)') AS FilePath
 	FROM sys.dm_xe_sessions a
 	JOIN sys.dm_xe_session_targets b ON a.address = b.event_session_address
-	CROSS APPLY (SELECT CAST(b.target_data AS XML).value('(/EventFileTarget/File/@name)[1]','NVARCHAR(MAX)') AS FilePath) p
 	WHERE a.session_source = 'server'
-	AND a.name = @Event_Name
+	AND a.name = @EventName
 )
 SELECT @SQL = '
 ;WITH Event_Base
@@ -63,24 +60,35 @@ AS
 			CAST(event_data AS XML).value(''(event/data[@name="result"]/text)[1]'', ''NVARCHAR(MAX)'') AS result,
 			CAST(event_data AS XML).value(''(event/action[@name="client_pid"]/value)[1]'', ''NVARCHAR(100)'') AS client_pid'
 		END + '
-	FROM sys.fn_xe_file_target_read_file(''' + IIF(@Full_Data = 1,FilePath_Full,FilePath) + ''', null, null, null)
+	FROM sys.fn_xe_file_target_read_file(''' + LEFT(FilePath,LEN(FilePath) - CHARINDEX('\', REVERSE(FilePath)) + 1) + @EventName + N'*.xel' + ''', null, null, null) F
+	WHERE SUBSTRING(F.event_data, CHARINDEX(''timestamp="'', F.event_data) + 11, 19) >= CONVERT(VARCHAR(19), DATEADD(DAY, ' + @BeginDate + ', GETDATE()), 120)
 )
 SELECT *
 FROM Event_Base
-WHERE EventTime >= ' + @Start_Day + '
-' +
+WHERE 1 = 1' +
 CASE EventName
 	WHEN 'DBA_Base' THEN '
-	--AND username NOT IN (''kent'',''gino'',''jacky'')
-	AND client_app_name NOT IN (''Replication Monitor'')
-	AND message NOT IN (''Insufficient member credit for bet placement'',''auto statistics internal'')
-	AND message NOT LIKE ''%duplicate key%''
+	--AND (username NOT IN (''kent'',''gino'',''jacky'') OR username IS NULL)
+	AND client_app_name <> ''Replication Monitor''
+	AND
+	(
+		message IS NULL
+		OR message NOT IN
+		(
+			''Insufficient member credit for bet placement'',
+			''auto statistics internal''
+		)
+		AND message NOT LIKE ''%duplicate key%''
+	)
 	--AND username = ''bo_ac''
 	'
 	WHEN 'T-SQL Trace' THEN '
-	AND SQL_Text NOT LIKE ''%N''''UPDATE%''
-	AND SQL_Text NOT LIKE ''%N''''SELECT%''
-	AND SQL_Text NOT LIKE ''%N''''INSERT%''
+	AND (
+			SQL_Text NOT LIKE N''%UPDATE%''
+		AND SQL_Text NOT LIKE N''%SELECT%''
+		AND SQL_Text NOT LIKE N''%INSERT%''
+		OR  SQL_Text IS NULL
+	  )
 
 	--PKQ TCK
 	--AND SQL_Text NOT LIKE ''%lobby_up_list_player_transaction_wl%''
@@ -89,7 +97,7 @@ CASE EventName
 	--AND SQL_Text NOT LIKE ''%merchant_bo_report_game_winlose%''
 	'
 	WHEN 'Rd-Tool Trace' THEN '
-	--AND batch_text NOT LIKE ''%%''
+	--AND (batch_text NOT LIKE ''%%'' OR batch_text IS NULL)
 	'
 	ELSE ''
 END
