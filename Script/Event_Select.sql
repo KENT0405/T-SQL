@@ -85,7 +85,6 @@ CASE EventName
 	WHEN 'T-SQL Trace' THEN '
 	AND (
 			SQL_Text NOT LIKE N''%UPDATE%''
-		AND SQL_Text NOT LIKE N''%SELECT%''
 		AND SQL_Text NOT LIKE N''%INSERT%''
 		OR  SQL_Text IS NULL
 	  )
