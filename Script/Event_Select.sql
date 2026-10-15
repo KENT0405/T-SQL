@@ -80,7 +80,7 @@ CASE EventName
 		)
 		AND message NOT LIKE ''%duplicate key%''
 	)
-	--AND username = ''bo_ac''
+	AND message IS NOT NULL
 	'
 	WHEN 'T-SQL Trace' THEN '
 	AND (
