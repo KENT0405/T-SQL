@@ -34,6 +34,7 @@
  6. 設定複寫
     - 加入對應發行集 (目前都是放到 slot、casino、other 三大分類中)
     - 若有新增新的發行集，需開啟allow_partition_switch
+    - 大小表複寫作業只需要update功能 (將delete、update功能關掉)
 
 
 #### <font color=#afeeee>(三)、設定 ticket db 的 partition view</font>
@@ -62,19 +63,21 @@
 - - -
 ### <font color=#FF95CA>二、Staging上線 (DB單)</font>
 #### <font color=#afeeee>(一)、ticket db 前置作業</font>
-```
+
 1. DEV backup後，直接複製到本機並上傳owncloud
 2. 從staging的GATE機下載下來後複製到staging OS環境
 3. 建立db資料夾後 RESTORE DATABASE
 4. DB owner改成db_user
 5. 刪除原本dev在使用的所有user(rd_user、IC_QA、qa_user、qard_user、read_ac)
-6. GRANT USER(tkt_ac=2, rd_user=1)
+6. [GRANT USER(tkt_ac=2, rd_user=1)](../User_Alter_All_Permission.sql)
 7. 確認partition view時間區間正確
-```
+8. idc_repl重建要看error_message的view
+    > EXEC idc_repl.dbo.PROC_CreateAllErrorView
+
 
 #### <font color=#afeeee>(二)、source db 前置作業</font>
 ```
-1. 產出DEV環境中該provider所有table的完整語法(包含compression參數及partition參數)
+1. 產出DEV環境中該provider大小DB裡的所有table的完整語法(包含compression參數及partition參數)
 2. 在staging環境執行前述語法
 ```
 
@@ -82,8 +85,8 @@
 ```
 DB單中會包含四組REPLICATION的抄寫
     -bo >>> tkt/pmt
-    -pmt >>> aff (nonrealtime repl : need to create table)
-    -src >>> src
+    -pmt >>> aff (nonrealtime repl : 需要去 pmt_db 複製 TB_TicketSummaryCat_XXX 到 AFF 的 pmt_repl)
+    -src >>> src (大小表複寫作業只需要update功能 (將delete、update功能關掉))
 ```
 
 - - -
@@ -111,5 +114,5 @@ DB單中會包含四組REPLICATION的抄寫
     -bo >>> dis >>> tkt/pmt
     -pmt >>> dis >>> bi
     -pmt >>> aff (nonrealtime repl : need to create table)
-    -src >>> src
+    -src >>> src (大小表複寫作業只需要update功能 (將delete、update功能關掉))
 ```
