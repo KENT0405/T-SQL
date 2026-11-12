@@ -63,7 +63,7 @@
 - - -
 ### <font color=#FF95CA>二、Staging上線 (DB單)</font>
 #### <font color=#afeeee>(一)、ticket db 前置作業</font>
-
+[➣➣➣▶一鍵執行(SQL)](../@@Notes/New%20Provider上線/STA_TCK上線.sql)
 1. DEV backup後，直接複製到本機並上傳owncloud
 2. 從staging的GATE機下載下來後複製到staging OS環境
 3. 建立db資料夾後 RESTORE DATABASE
