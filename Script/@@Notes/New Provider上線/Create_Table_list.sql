@@ -1,5 +1,5 @@
 DECLARE
-	@ProviderName VARCHAR(20) = 'OGS',
+	@ProviderName VARCHAR(20) = 'OGS',--記得大小 DB 的表都要產出來
 	@TB_name VARCHAR(200),
 	@ID INT = 1
 
